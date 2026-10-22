@@ -218,18 +218,20 @@ test("estoque transacional: permissões, precisão, idempotência, concorrência
     occurredAt: "2026-10-02",
     destination: "Trator 1",
   };
-  const race = await Promise.all([
-    admin.post(base + "/movements", payload),
-    admin.post(base + "/movements", { ...payload, key: randomUUID() }),
-  ]);
+  const contenders = [payload, { ...payload, key: randomUUID() }];
+  const race = await Promise.all(
+    contenders.map((request) => admin.post(base + "/movements", request)),
+  );
   assert.deepEqual(race.map((r) => r.statusCode).sort(), [201, 409]);
-  const saved = race.find((r) => r.statusCode === 201)!.json();
+  const winner = race.findIndex((r) => r.statusCode === 201);
+  const saved = race[winner].json();
+  const acceptedPayload = contenders[winner];
   assert.equal(
-    (await admin.post(base + "/movements", payload)).statusCode,
+    (await admin.post(base + "/movements", acceptedPayload)).statusCode,
     201,
   );
   assert.equal(
-    (await admin.post(base + "/movements", { ...payload, quantity: "1" }))
+    (await admin.post(base + "/movements", { ...acceptedPayload, quantity: "1" }))
       .statusCode,
     409,
   );
