@@ -1,0 +1,3 @@
+produto;categoria;quantidade;unidade;estoque_minimo;custo_unitario;lote;validade;fornecedor
+Diesel S10;Combustíveis;420;L;300;6,10;DIESEL-01;N/A;Fornecedor de exemplo
+Fertilizante NPK;Fertilizantes;120;kg;200;3,80;NPK-01;;Fornecedor de exemplo

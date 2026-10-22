@@ -1,0 +1,3 @@
+produto;categoria;quantidade;unidade;tipo;data;lote;custo_unitario;validade;fornecedor;destino;observacoes;referencia
+Diesel S10;Combustíveis;420;L;abertura;01/10/2026;DIESEL-01;6,10;N/A;Fornecedor de exemplo;;Saldo de abertura;exemplo-001
+Diesel S10;Combustíveis;150;L;consumo;02/10/2026;DIESEL-01;;;;Trator 01;Retirada de exemplo;exemplo-002
