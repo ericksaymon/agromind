@@ -181,19 +181,19 @@ function MovementLink({
 }
 
 export function IntelligenceWorkspace({
-  property,
+  property, initialProductId = "", initialTab = "consumption",
 }: {
-  property: PropertySummary;
+  property: PropertySummary; initialProductId?: string; initialTab?: Tab;
 }) {
   const [view, setView] = useState<IntelligenceView | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState(initialFilters),
-    [filters, setFilters] = useState(initialFilters),
+  const [draft, setDraft] = useState({ ...initialFilters, productId: initialProductId }),
+    [filters, setFilters] = useState({ ...initialFilters, productId: initialProductId }),
     [page, setPage] = useState(1),
     [anomalyPage, setAnomalyPage] = useState(1);
-  const [tab, setTab] = useState<Tab>("consumption"),
-    [chosen, setChosen] = useState(""),
+  const [tab, setTab] = useState<Tab>(initialTab),
+    [chosen, setChosen] = useState(initialProductId),
     [settings, setSettings] = useState(false);
   const request = useRef(0),
     tabButtons = useRef<(HTMLButtonElement | null)[]>([]);

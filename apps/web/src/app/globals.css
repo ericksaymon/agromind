@@ -178,3 +178,19 @@
 @media(max-width:380px){.nav-cta{display:none}.mobile-menu{margin-left:auto}}
 @media(max-width:650px){.button-dashboard{gap:5px}.button-dashboard span{font-size:9px;max-width:55px}.button-dashboard span::after{content:none}}
 @media(max-width:650px){.demo-standalone .dashboard-top{font-size:9px}.demo-standalone .dashboard-date{font-size:7px}.demo-standalone .metric-top{font-size:10px}.demo-standalone .metric>small{font-size:9px}.demo-standalone .priority-row{flex-wrap:wrap}.demo-standalone .priority-row strong{font-size:11px}.demo-standalone .priority-row small{font-size:9px}.demo-standalone .priority-trailing{margin-left:35px}.demo-standalone .priority-trailing .status{font-size:10px}.demo-standalone .panel-title h4{font-size:11px}.demo-standalone .panel-title>span{font-size:8px}.demo-standalone .panel-foot{font-size:8px}.demo-standalone .demo-bottom{flex-wrap:wrap;font-size:8px}.demo-standalone .demo-bottom button{font-size:9px}.demo-standalone .button-dashboard{font-size:0}.demo-standalone .expiry-facts small{font-size:8px}.demo-standalone .expiry-facts strong span{font-size:10px}}
+
+/* Data review and progressive explanations */
+.refinement-panel { margin: 20px 0; padding: 20px; border: 1px solid var(--line, #dce3d6); border-radius: 12px; background: #f7f8f2; }
+.refinement-panel h3 { margin: 0 0 8px; font-size: 1rem; }
+.refinement-panel p { font-size: .85rem; line-height: 1.65; }
+.refinement-panel table { min-width: 980px; width: 100%; border-collapse: collapse; font-size: .8rem; }
+.refinement-panel th, .refinement-panel td { padding: 12px; text-align: left; border-bottom: 1px solid #dce3d6; }
+.refinement-panel th small { display: block; font-weight: 400; }
+.refinement-panel input { width: 150px; padding: 8px; border: 1px solid #bdcbb7; border-radius: 6px; background: white; color: #103b30; }
+.quality-list { padding: 0; margin: 0; list-style: none; }
+.quality-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid #dce3d6; }
+.quality-list p { margin: 4px 0 0; }
+.quality-list .stock-text-button { flex-shrink: 0; }
+.analysis-method { margin: 18px 0; padding: 14px; border: 1px solid #dce3d6; border-radius: 8px; }
+.analysis-method summary { cursor: pointer; font-size: .85rem; font-weight: 600; }
+@media(max-width: 600px) { .refinement-panel { padding: 14px; } .quality-list li { align-items: flex-start; flex-direction: column; gap: 6px; } }

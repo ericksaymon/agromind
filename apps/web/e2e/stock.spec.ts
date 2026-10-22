@@ -155,6 +155,15 @@ test("estoque real: cadastro, lote, consumo, estorno e importação conferida", 
     page.getByRole("heading", { name: "Confira o que será importado" }),
   ).toBeVisible();
   await expect(page.getByLabel("Importar registro 3")).toBeDisabled();
+  const reconciliation = page.getByRole("region", { name: "Conciliação dos saldos", exact: true });
+  await expect(reconciliation).toContainText("120");
+  await page.getByLabel("Saldo conferido de Fertilizante NPK", { exact: true }).fill("100");
+  await expect(reconciliation).toContainText("Divergência: -20 kg");
+  await page.getByLabel("Saldo conferido de Fertilizante NPK", { exact: true }).fill("120");
+  await expect(reconciliation).toContainText("Saldos conferem");
+  await page.getByLabel("Importar registro 2").uncheck();
+  await expect(reconciliation).not.toContainText("Fertilizante NPK");
+  await page.getByLabel("Importar registro 2").check();
   await audit(page, "prévia com pendência");
   await page.setViewportSize({ width: 390, height: 1000 });
   expect(

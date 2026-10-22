@@ -311,11 +311,11 @@ export function StockWorkspace({
                 preservada depois da primeira movimentação.
               </p>
             </section>
-            {!product.archived && <ProductAnalytics property={property} productId={product.id} revision={inventory.revision} />}
+            {!product.archived && <ProductAnalytics property={property} productId={product.id} revision={inventory.revision} stockProduct={product} edit={() => { setEdit(product); setDialog("product"); }} />}
             <section className="stock-card">
               <div className="stock-card-heading">
                 <div>
-                  <h2>Lotes e validades</h2>
+                  <h2 id="lotes" tabIndex={-1}>Lotes e validades</h2>
                   <p>
                     Na retirada, sugerimos o lote elegível que vence primeiro.
                   </p>

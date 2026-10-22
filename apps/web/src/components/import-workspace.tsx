@@ -30,6 +30,7 @@ import {
   type InventoryView,
   type PropertySummary,
 } from "../../../../packages/contracts/src/index";
+import { ImportReconciliation } from "./import-reconciliation";
 const fields = Object.keys(importFields) as ImportField[];
 type BatchList = {
   id: string;
@@ -576,6 +577,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
               os saldos atuais.
             </p>
           )}
+          {inventory && <ImportReconciliation key={batch.previewToken} batch={batch} inventory={inventory} selected={selected} />}
           <div className="import-selection">
             <button
               className="stock-secondary"

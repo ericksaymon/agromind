@@ -27,7 +27,8 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await expect(page).toHaveURL("/app"); await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
   await expect(page.getByText("Autonomia ainda não calculável", { exact: true })).toBeVisible();
   await page.goto(`/app/estoque/${productId}`);
-  await page.getByRole("button", { name: "Histórico e reposição", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Qualidade dos dados do produto" })).toContainText("Histórico de consumo: conferir");
+  await page.getByRole("button", { name: "Revisar histórico", exact: true }).click();
   let dialog = page.getByRole("dialog");
   await dialog.getByLabel("Início do histórico completo").fill(shiftDay(today, -30));
   await dialog.getByLabel("Fim do histórico completo").fill(shiftDay(today, -1));
@@ -37,6 +38,8 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await audit(page, "declaração de cobertura");
   await dialog.getByRole("button", { name: "Confirmar cobertura", exact: true }).click(); await expect(dialog).not.toBeVisible();
   await expect(page.getByText("Autonomia nominal: 7 dias", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Qualidade dos dados do produto" })).toContainText("4 de 4 verificações atendidas");
+  await expect(page.getByText("Como esta análise é calculada", { exact: true })).toHaveCount(1);
   await page.getByRole("link", { name: "Visão geral", exact: true }).click();
   await expect(page.getByText("Autonomia nominal: 7 dias", { exact: true })).toBeVisible();
   await expect(page.locator(".analysis-stats")).toContainText("2.520,00");
@@ -59,7 +62,11 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await expect(page.getByText("Autonomia nominal: 4,5 dias", { exact: true })).toBeVisible(); await expect(page.locator(".stock-summary")).toContainText("270 L");
   await page.getByText("Análises e revisões anteriores", { exact: true }).click(); await expect(page.getByRole("region", { name: "Análises anteriores" })).toContainText("7 dias");
   await page.getByRole("link", { name: /Ver alertas deste produto/ }).click(); await expect(page.getByLabel("Buscar produto")).toHaveValue("Diesel S10");
-  await page.getByRole("button", { name: /Planeje a reposição/ }).click(); dialog = page.getByRole("dialog"); await expect(dialog).toContainText("270 L / 60 L/dia = 4.5 dias"); await expect(dialog).toContainText("Acompanhamento atualizado"); await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.getByRole("button", { name: /Planeje a reposição/ }).click(); dialog = page.getByRole("dialog"); await expect(dialog).toContainText("270 L / 60 L/dia = 4.5 dias"); await expect(dialog).toContainText("Acompanhamento atualizado");
+  await dialog.getByRole("link", { name: "Planejar reposição", exact: false }).click();
+  await expect(page).toHaveURL(new RegExp(`productId=${productId}&tab=planning`));
+  await expect(page.getByRole("tab", { name: "Planejamento e simulação", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Produto", { exact: true })).toHaveValue(productId);
   for (const route of ["/app", "/app/alertas", `/app/estoque/${productId}`]) {
     await page.setViewportSize({ width: 390, height: 844 }); await page.goto(route); await expect(page.locator(".analysis-reference").first()).toContainText("Análise atualizada");
     await audit(page, route + " no celular"); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), route).toBe(true);
