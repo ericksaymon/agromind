@@ -507,9 +507,12 @@ export function buildIntelligence(
         eventDay <= referenceDay &&
         covered(shiftDay(eventDay, -30), shiftDay(eventDay, -1))
       ) {
+        // usage is chronological: only the last 200 can belong to the sample.
+        // Cut first so old records are not rescanned for every event.
+        const sampleFrom = shiftDay(eventDay, -30);
         const sample = history
-          .filter((x) => dates.get(x.id)! >= shiftDay(eventDay, -30))
-          .slice(-200);
+          .slice(-200)
+          .filter((x) => dates.get(x.id)! >= sampleFrom);
         if (sample.length >= config.withdrawalMinSamples) {
           const center = median(sample.map((x) => x.delta.abs())),
             deviation = median(
