@@ -57,6 +57,7 @@ export interface ProductView {
   category: string;
   unit: string;
   minimum: string;
+  minimumKnown: boolean;
   archived: boolean;
   balance: string;
   knownValue: string;
@@ -75,6 +76,10 @@ export interface MovementView {
   occurredAt: string;
   recordedAt: string;
   actorName: string;
+  originalResponsible: string | null;
+  originalReference: string | null;
+  originalLine: number | null;
+  consumptionConfirmed: boolean;
   destination: string | null;
   notes: string | null;
   source: string;
@@ -90,6 +95,7 @@ export interface ProductInput {
   category: string;
   unit: string;
   minimum: string;
+  minimumKnown?: boolean;
   acknowledgeSimilar?: boolean;
 }
 export interface LotInput {
@@ -108,6 +114,10 @@ export interface MovementInput {
   destination?: string;
   notes?: string;
   lot?: LotInput;
+  originalResponsible?: string;
+  originalReference?: string;
+  originalLine?: number;
+  consumptionConfirmed?: boolean;
 }
 export const importFields = {
   product: "Produto",
@@ -124,12 +134,55 @@ export const importFields = {
   destination: "Destino",
   notes: "Observações",
   reference: "Identificador de origem",
+  responsible: "Responsável histórico",
+  usageConfirmed: "Saída genérica confirmada como uso (sim/não)",
 } as const;
 export type ImportField = keyof typeof importFields;
 export interface ImportSheet {
   name: string;
   headers: string[];
   rows: string[][];
+}
+
+export type AlertPriority = "CRITICAL" | "HIGH" | "MODERATE";
+export type ActionState = "PENDING" | "REVIEWING" | "RESOLVED" | "DISMISSED";
+export interface AnalysisPolicy {
+  reorderDays: number; expiryWarningDays: number; inactivityDays: number; policyVersion: number;
+}
+export interface AnalysisAlert {
+  identity: string; productId: string; productName: string; category: string; unit: string;
+  lotId: string | null; lotCode: string | null; rule: string; priority: AlertPriority;
+  title: string; explanation: string; suggestion: string; deadlineDays: number | null;
+  exposedQuantity: string; knownValue: string; partialCost: boolean;
+  limitations: string[]; referenceDay: string; revision: number; ruleVersion: string; policyVersion: number;
+}
+export interface ProductAnalysis {
+  id: string; name: string; category: string; unit: string;
+  physical: string; eligible: string; expired: string; unknownExpiry: string;
+  minimum: string; minimumKnown: boolean; knownValue: string; unpricedLots: number;
+  consumption: string; observedDays: number; from: string | null; to: string;
+  dailyAverage: string | null; autonomyDays: string | null; unstable: boolean;
+  preliminary: boolean; limitations: string[]; daily: { day: string; quantity: string }[];
+  coverageStart: string | null; coverageEnd: string | null; coverageOngoing: boolean;
+  leadTimeDays: number | null; safetyDays: number; movementIds: string[];
+}
+export interface AnalysisResult {
+  referenceDay: string; timezone: string; ruleVersion: string; revision: number;
+  policy: AnalysisPolicy; products: ProductAnalysis[]; alerts: AnalysisAlert[];
+  summary: { products: number; knownValue: string; unpricedLots: number; criticalProducts: number;
+    expiringLots: number; knownRiskValue: string; incompleteProducts: number };
+}
+export interface AlertOccurrenceView {
+  id: string; identity: string; productId: string; priority: string; rule: string;
+  evidence: AnalysisAlert; firstSeenAt: string; lastSeenAt: string; closedAt: string | null;
+  previousId: string | null; actionState: ActionState; actionVersion: number;
+  assigneeId: string | null; assigneeName: string | null;
+}
+export interface AnalysisView {
+  status: "EMPTY" | "CURRENT" | "PENDING" | "STALE" | "ERROR";
+  snapshotId: string | null; calculatedAt: string | null; result: AnalysisResult | null;
+  error: string | null; policy: AnalysisPolicy; revision: number;
+  alerts: AlertOccurrenceView[];
 }
 export interface ImportRow {
   line: number;

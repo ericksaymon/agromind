@@ -43,6 +43,16 @@ model Property {
   memberships Membership[]
   sessions Session[]
   inventoryRevision Int @default(0)
+  analysisPending Boolean @default(true)
+  analysisError String? @db.VarChar(300)
+  analysisAttemptAt DateTime?
+  policyVersion Int @default(1)
+  reorderDays Int @default(7)
+  expiryWarningDays Int @default(30)
+  inactivityDays Int @default(90)
+  analyses AnalysisSnapshot[]
+  alerts AlertOccurrence[]
+  analysisEvents AnalysisEvent[]
   products Product[]
   imports ImportBatch[]
   requests StockRequest[]
@@ -66,6 +76,14 @@ model Product {
   category String @db.VarChar(80)
   unit String @db.VarChar(10)
   minimum Decimal @default(0) @db.Decimal(18,3)
+  minimumKnown Boolean @default(false)
+  coverageStart DateTime? @db.Date
+  coverageEnd DateTime? @db.Date
+  coverageOngoing Boolean @default(false)
+  coverageConfirmedBy String? @db.Uuid
+  leadTimeDays Int?
+  safetyDays Int @default(0)
+  positionOn DateTime? @db.Date
   archived Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,6 +120,10 @@ model StockMovement {
   recordedAt DateTime @default(now())
   actorId String @db.Uuid
   actorName String @db.VarChar(120)
+  originalResponsible String? @db.VarChar(120)
+  originalReference String? @db.VarChar(180)
+  originalLine Int?
+  consumptionConfirmed Boolean @default(true)
   destination String? @db.VarChar(120)
   notes String? @db.VarChar(500)
   source String @db.VarChar(12)
@@ -113,6 +135,54 @@ model StockMovement {
   @@index([productId, occurredAt])
   @@index([lotId, occurredAt])
   @@index([fingerprint])
+}
+model AnalysisSnapshot {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  revision Int
+  policyVersion Int
+  ruleVersion String @db.VarChar(40)
+  referenceDay String @db.Char(10)
+  timezone String @db.VarChar(80)
+  result Json
+  createdAt DateTime @default(now())
+  @@unique([propertyId, revision, policyVersion, referenceDay, ruleVersion])
+  @@index([propertyId, createdAt])
+}
+model AlertOccurrence {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  identity String @db.VarChar(160)
+  productId String @db.Uuid
+  lotId String? @db.Uuid
+  rule String @db.VarChar(40)
+  priority String @db.VarChar(12)
+  evidence Json
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  closedAt DateTime?
+  previousId String? @db.Uuid
+  actionState String @default("PENDING") @db.VarChar(16)
+  actionVersion Int @default(0)
+  assigneeId String? @db.Uuid
+  assigneeName String? @db.VarChar(120)
+  @@index([propertyId, closedAt])
+  @@index([propertyId, identity])
+}
+model AnalysisEvent {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  alertId String? @db.Uuid
+  productId String? @db.Uuid
+  kind String @db.VarChar(30)
+  actorId String? @db.Uuid
+  actorName String @db.VarChar(120)
+  details Json
+  createdAt DateTime @default(now())
+  @@index([propertyId, alertId, createdAt])
 }
 model StockRequest {
   id String @id @default(uuid()) @db.Uuid

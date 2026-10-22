@@ -245,9 +245,14 @@ async function makePreview(
           "Saldo inicial zero: cadastra o produto sem criar movimentação de abertura.",
         );
       checkUnitQuantity(values.unit, decimal(values.quantity));
-      values.minimum =
-        importNumber(values.minimum, input.locale, 3, false) || "0";
-      checkUnitQuantity(values.unit, decimal(values.minimum));
+      values.minimum = importNumber(values.minimum, input.locale, 3, false);
+      checkUnitQuantity(values.unit, decimal(values.minimum || "0"));
+      if (!values.minimum) warnings.push("Mínimo não informado: não será tratado como limite confirmado.");
+      if (values.responsible.length > 120 || values.reference.length > 180)
+        throw new Error("Responsável ou referência de origem excede o limite.");
+      const rawKind = mapping.kind !== undefined ? original[mapping.kind] || "" : "";
+      if (batch.mode === "HISTORY" && keyOf(rawKind) === "saida" && !["sim", "uso", "consumo"].includes(keyOf(values.usageConfirmed)))
+        warnings.push("Saída genérica: saldo será atualizado, mas não contará como consumo até informar 'sim' em uso confirmado.");
       values.unitCost = importNumber(values.unitCost, input.locale, 4, false);
       values.expiry = importDate(values.expiry);
       if (
@@ -650,7 +655,8 @@ export async function registerImportRoutes(app: FastifyInstance) {
                   name: v.product,
                   category: v.category,
                   unit: v.unit,
-                  minimum: v.minimum,
+                  minimum: v.minimum || "0",
+                  minimumKnown: !!v.minimum,
                   acknowledgeSimilar: true,
                 })
               ).id;
@@ -661,6 +667,7 @@ export async function registerImportRoutes(app: FastifyInstance) {
           });
           if (p.propertyId !== actor.propertyId || p.unit !== v.unit)
             failure(400, `Registro ${row.line}: unidade incompatível.`);
+          if (batch.mode === "POSITION") await tx.product.update({ where: { id: productId }, data: { positionOn: new Date(v.date) } });
           const existingLot = await tx.stockLot.findUnique({
             where: { productId_code: { productId, code: v.lot } },
           });
@@ -688,6 +695,13 @@ export async function registerImportRoutes(app: FastifyInstance) {
             occurredAt: v.date,
             destination: v.destination,
             notes: v.notes,
+            originalResponsible: v.responsible,
+            originalReference: v.reference,
+            originalLine: row.line,
+            consumptionConfirmed: (() => {
+              const originalKind = preview.mapping.kind !== undefined ? row.original[preview.mapping.kind] || "" : "";
+              return keyOf(originalKind) !== "saida" || ["sim", "uso", "consumo"].includes(keyOf(v.usageConfirmed));
+            })(),
             lot: {
               code: v.lot,
               expiryStatus:

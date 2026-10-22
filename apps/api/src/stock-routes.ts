@@ -32,6 +32,7 @@ const productFields = {
   category: Type.String({ minLength: 2, maxLength: 80 }),
   unit: text(10),
   minimum: numberText,
+  minimumKnown: Type.Optional(Type.Boolean()),
   acknowledgeSimilar: Type.Optional(Type.Boolean()),
 };
 const productBody = Type.Object(
@@ -390,6 +391,10 @@ export async function registerStockRoutes(app: FastifyInstance) {
           occurredAt: m.occurredAt.toISOString(),
           recordedAt: m.recordedAt.toISOString(),
           actorName: m.actorName,
+          originalResponsible: m.originalResponsible,
+          originalReference: m.originalReference,
+          originalLine: m.originalLine,
+          consumptionConfirmed: m.consumptionConfirmed,
           destination: m.destination,
           notes: m.notes,
           source: m.source,

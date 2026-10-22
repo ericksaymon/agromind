@@ -137,6 +137,7 @@ export async function locked<T>(
       const p = await tx.property.findUniqueOrThrow({
         where: { id: actor.propertyId },
       });
+      actor.timezone = p.timezone;
       return fn(tx, p.inventoryRevision);
     },
     { maxWait: 15000, timeout: 60000 },
@@ -153,7 +154,7 @@ export function sameRevision(actual: number, expected: number) {
 export async function bump(tx: Tx, propertyId: string) {
   await tx.property.update({
     where: { id: propertyId },
-    data: { inventoryRevision: { increment: 1 } },
+    data: { inventoryRevision: { increment: 1 }, analysisPending: true },
   });
 }
 export async function replay(
@@ -210,6 +211,7 @@ export function cleanProduct(input: ProductInput) {
     category,
     unit: input.unit,
     minimum: decimal(input.minimum, "Estoque mínimo"),
+    minimumKnown: input.minimumKnown ?? true,
   };
 }
 export function checkUnitQuantity(unit: string, value: Prisma.Decimal) {
@@ -377,6 +379,10 @@ export async function applyMovement(
       occurredAt: when,
       actorId: actor.userId,
       actorName: actor.name,
+      originalResponsible: input.originalResponsible?.trim() || null,
+      originalReference: input.originalReference?.trim() || null,
+      originalLine: input.originalLine,
+      consumptionConfirmed: input.consumptionConfirmed ?? true,
       destination: input.destination?.trim() || null,
       notes: input.notes?.trim() || null,
       source,
@@ -479,6 +485,7 @@ export function productView(
     category: p.category,
     unit: p.unit,
     minimum: p.minimum.toString(),
+    minimumKnown: p.minimumKnown,
     archived: p.archived,
     balance: balance.toString(),
     knownValue: known.toFixed(2),

@@ -25,6 +25,8 @@ export function guessMapping(headers: string[]) {
     destination: ["destino", "destinacao"],
     notes: ["observacoes", "obs", "motivo"],
     reference: ["id", "referencia", "identificador", "codigo movimento"],
+    responsible: ["responsavel", "responsavel retirada", "operador"],
+    usageConfirmed: ["uso confirmado", "consumo confirmado"],
   };
   const result: Partial<Record<ImportField, number>> = {};
   for (const f of fields) {

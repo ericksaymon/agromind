@@ -8,7 +8,10 @@ import { settings } from "./config";
 import { cookieOptions, createSession, csrfToken, digest, failure, requireMembership, requireSession, sessionCookie, validateMutation } from "./security";
 import { sendAction } from "./mail";
 import type { AuthSession } from "../../../packages/contracts/src/index";
+import type { FastifyRequest } from "fastify";
 import { registerStockRoutes } from "./stock-routes";
+import { registerAnalysisRoutes } from "./analysis-routes";
+import { bump } from "./stock-service";
 
 const email = Type.String({ format: "email", maxLength: 254 });
 const password = Type.String({ minLength: 8, maxLength: 128 });
@@ -19,14 +22,21 @@ const tokenBody = Type.Object({ token: Type.String({ pattern: "^[a-f0-9]{64}$" }
 const resetBody = Type.Object({ token: Type.String({ pattern: "^[a-f0-9]{64}$" }), password }, { additionalProperties: false });
 const propertyBody = Type.Object({ name: Type.String({ minLength: 2, maxLength: 120 }), responsible: Type.String({ minLength: 2, maxLength: 120 }), timezone: Type.String({ minLength: 3, maxLength: 80 }), phone: Type.Optional(Type.String({ maxLength: 30 })), startMethod: Type.Union([Type.Literal("IMPORT"), Type.Literal("MANUAL")]) }, { additionalProperties: false });
 const propertyParams = Type.Object({ id: Type.String({ format: "uuid" }) });
-const restricted = { rateLimit: { max: 10, timeWindow: "15 minutes" } };
+const restricted = { rateLimit: { max: 10, timeWindow: "15 minutes", keyGenerator: (request: FastifyRequest) => request.ip } };
 const normalize = (value: string) => value.trim().toLowerCase();
 const validPassword = (value: string) => value.length >= 8 && value.length <= 128 && /[a-zA-ZÀ-ÿ]/.test(value) && /[0-9]/.test(value);
 
 export async function buildApp({ test = false } = {}) {
   const app = Fastify({ logger: test ? false : { level: "info", redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-csrf-token", "res.headers.set-cookie"] }, bodyLimit: 16384, trustProxy: false });
   await app.register(cookie);
-  await app.register(rateLimit, { max: 180, timeWindow: "1 minute" });
+  await app.register(rateLimit, { max: 180, timeWindow: "1 minute", keyGenerator: async request => {
+    const token = request.cookies[sessionCookie];
+    if (token && /^[a-f0-9]{64}$/.test(token)) {
+      const session = await db.session.findUnique({ where: { tokenHash: digest(token) }, select: { id: true, expiresAt: true } });
+      if (session && session.expiresAt > new Date()) return `session:${session.id}`;
+    }
+    return request.ip;
+  } });
   app.addHook("onRequest", async (request, reply) => {
     reply.header("Cache-Control", "no-store").header("X-Content-Type-Options", "nosniff").header("Referrer-Policy", "no-referrer");
     validateMutation(request);
@@ -128,8 +138,15 @@ export async function buildApp({ test = false } = {}) {
     return { ...membership.property, role: membership.role };
   });
   app.patch<{ Params: Static<typeof propertyParams>; Body: Static<typeof propertyBody> }>("/api/properties/:id", { schema: { params: propertyParams, body: propertyBody } }, async request => {
-    await requireMembership(request, request.params.id, true);
-    return db.property.update({ where: { id: request.params.id }, data: cleanProperty(request.body) });
+    const { session } = await requireMembership(request, request.params.id, true);
+    return db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "Property" WHERE id=${request.params.id}::uuid FOR UPDATE`;
+      const membership = await tx.membership.findUnique({ where: { userId_propertyId: { userId: session.userId, propertyId: request.params.id } } });
+      if (membership?.role !== "ADMIN") failure(403, "Você não tem permissão para alterar esta propriedade.");
+      const result = await tx.property.update({ where: { id: request.params.id }, data: cleanProperty(request.body) });
+      await bump(tx, request.params.id);
+      return result;
+    });
   });
   app.post<{ Body: { propertyId: string } }>("/api/auth/active-property", { schema: { body: Type.Object({ propertyId: Type.String({ format: "uuid" }) }, { additionalProperties: false }) } }, async request => {
     const { session } = await requireMembership(request, request.body.propertyId);
@@ -137,6 +154,7 @@ export async function buildApp({ test = false } = {}) {
     return { ok: true };
   });
   await registerStockRoutes(app);
+  await registerAnalysisRoutes(app);
   return app;
 }
 
