@@ -52,6 +52,7 @@ export interface LotView {
   supplier: string | null;
 }
 export interface ProductView {
+  categoryId?: string;
   id: string;
   name: string;
   category: string;
@@ -87,10 +88,12 @@ export interface MovementView {
   reversed: boolean;
 }
 export interface InventoryView {
+  categories?: { id: string; name: string; archived: boolean; version: number }[];
   revision: number;
   products: ProductView[];
 }
 export interface ProductInput {
+  categoryId?: string;
   name: string;
   category: string;
   unit: string;

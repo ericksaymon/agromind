@@ -114,14 +114,14 @@ async function getBatch(actor: Actor, id: string) {
     where: { id, propertyId: actor.propertyId, userId: actor.userId },
   });
   if (!batch) failure(404, "Importação não encontrada.");
-  if (batch.status === "DRAFT" && batch.expiresAt < new Date())
+  if (batch.status === "DRAFT" && batch.expiresAt <= new Date())
     failure(410, "Este rascunho expirou. Envie a planilha novamente.");
   return batch;
 }
 async function asView(
   batch: Awaited<ReturnType<typeof getBatch>>,
 ): Promise<ImportView> {
-  const sheets = batch.raw as unknown as ImportSheet[],
+  const sheets = (Array.isArray(batch.raw) ? batch.raw : []) as unknown as ImportSheet[],
     preview = batch.preview as unknown as StoredPreview | null;
   const repeated = await db.importBatch.count({
     where: {
@@ -137,7 +137,7 @@ async function asView(
     fileName: batch.fileName,
     mode: batch.mode as ImportView["mode"],
     sheets,
-    mapping: preview?.mapping || guessMapping(sheets[0].headers),
+    mapping: preview?.mapping || (sheets[0] ? guessMapping(sheets[0].headers) : {}),
     rows: preview?.rows || [],
     revision: preview?.revision ?? batch.revision,
     previewToken: preview?.token,
@@ -181,6 +181,7 @@ async function makePreview(
       property: await tx.property.findUniqueOrThrow({
         where: { id: actor.propertyId },
       }),
+      categories: await tx.category.findMany({ where: { propertyId: actor.propertyId, archived: false } }),
       products: await tx.product.findMany({
         where: { propertyId: actor.propertyId },
         include: { lots: true, movements: { select: { id: true }, take: 1 } },
@@ -212,6 +213,8 @@ async function makePreview(
     try {
       values.product = values.product.trim();
       values.category = values.category.trim() || target?.category || "Outros";
+      if (!snapshot.categories.some(c => c.nameKey === keyOf(values.category)) && !(target && keyOf(target.category)===keyOf(values.category))) throw new Error("Categoria não cadastrada ou arquivada. Associe a uma categoria ativa ou peça sua criação ao administrador.");
+      if (target && keyOf(target.category)!==keyOf(values.category)) warnings.push(`O produto associado mantém a categoria ${target.category}. A importação não reclassifica produtos existentes.`);
       if (
         values.product.length < 2 ||
         values.product.length > 120 ||
@@ -424,10 +427,8 @@ export async function registerImportRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const actor = await stockActor(request, request.params.propertyId, true),
         sheets = await readSheets(request.body.fileName, request.body.content);
-      const property = await db.property.findUniqueOrThrow({
-        where: { id: actor.propertyId },
-      });
-      await db.importBatch.deleteMany({
+      const batch = await locked(actor, async (tx, revision) => {
+      await tx.importBatch.deleteMany({
         where: {
           propertyId: actor.propertyId,
           userId: actor.userId,
@@ -436,7 +437,7 @@ export async function registerImportRoutes(app: FastifyInstance) {
         },
       });
       if (
-        (await db.importBatch.count({
+        (await tx.importBatch.count({
           where: {
             propertyId: actor.propertyId,
             userId: actor.userId,
@@ -448,17 +449,18 @@ export async function registerImportRoutes(app: FastifyInstance) {
           400,
           "Você já tem dez rascunhos. Cancele um deles antes de enviar outro arquivo.",
         );
-      const batch = await db.importBatch.create({
+      return tx.importBatch.create({
         data: {
           propertyId: actor.propertyId,
           userId: actor.userId,
           fileName: request.body.fileName,
           fileHash: digest(request.body.content),
           mode: request.body.mode,
-          revision: property.inventoryRevision,
+          revision,
           raw: sheets as unknown as Prisma.InputJsonValue,
           expiresAt: new Date(Date.now() + 86400000),
         },
+      });
       });
       return reply.code(201).send(await asView(batch));
     },
@@ -516,12 +518,15 @@ export async function registerImportRoutes(app: FastifyInstance) {
       if (batch.status !== "DRAFT")
         failure(409, "Esta importação já foi encerrada.");
       const preview = await makePreview(actor, batch, request.body);
-      const updated = await db.importBatch.updateMany({
+      const updated = await locked(actor, async (tx, revision) => {
+        sameRevision(revision, preview.revision);
+        return tx.importBatch.updateMany({
         where: { id: batch.id, status: "DRAFT" },
         data: {
           preview: preview as unknown as Prisma.InputJsonValue,
           revision: preview.revision,
         },
+      });
       });
       if (!updated.count) failure(409, "Esta importação já foi encerrada.");
       return asView(await getBatch(actor, batch.id));
@@ -558,14 +563,17 @@ export async function registerImportRoutes(app: FastifyInstance) {
           "AI_UNAVAILABLE",
         );
       }
-      await db.importBatch.updateMany({
-        where: { id: batch.id, status: "DRAFT" },
+      await locked(actor, async tx => {
+        const updated = await tx.importBatch.updateMany({
+        where: { id: batch.id, userId: actor.userId, status: "DRAFT", expiresAt: { gt: new Date() } },
         data: {
           model: suggestion.model,
           analysisNote:
             suggestion.note ||
             "Mapeamento sugerido pela IA; revisão humana obrigatória.",
         },
+      });
+        if (!updated.count) failure(409, "O rascunho não está mais disponível.");
       });
       return suggestion;
     },
@@ -601,7 +609,7 @@ export async function registerImportRoutes(app: FastifyInstance) {
         if (!batch) failure(404, "Importação não encontrada.");
         if (batch.status === "CONFIRMED")
           return { id: batch.id, result: batch.result };
-        if (batch.status !== "DRAFT" || batch.expiresAt < new Date())
+        if (batch.status !== "DRAFT" || batch.expiresAt <= new Date())
           failure(410, "Rascunho cancelado ou expirado.");
         const preview = batch.preview as unknown as StoredPreview | null;
         if (!preview || preview.token !== request.body.previewToken)

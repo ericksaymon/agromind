@@ -96,7 +96,8 @@ export async function registerAnalysisRoutes(app: FastifyInstance) {
     });
   });
   app.get<{ Params: Static<typeof params> }>("/api/properties/:propertyId/analysis/team", { schema: { params } }, async req => {
-    await stockActor(req, req.params.propertyId);
+    const actor = await stockActor(req, req.params.propertyId);
+    if (actor.role === "VIEWER") failure(403, "Seu acesso permite consultar apenas responsáveis já associados.", "FORBIDDEN");
     const team = await db.membership.findMany({ where: { propertyId: req.params.propertyId, role: { not: "VIEWER" } }, include: { user: { select: { id: true, name: true } } } });
     return team.map(t => t.user);
   });

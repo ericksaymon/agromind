@@ -16,6 +16,7 @@
     "test:api": "pnpm --filter @agromind/api test",
     "test:web": "pnpm --filter @agromind/web exec playwright test",
     "demo:reset": "pnpm --filter @agromind/api exec tsx scripts/demo-reset.ts",
+    "categories:preflight": "pnpm --filter @agromind/api exec tsx scripts/category-preflight.ts",
     "benchmark:analysis": "pnpm --filter @agromind/api exec tsx scripts/benchmark-analysis.ts"
   }
 }

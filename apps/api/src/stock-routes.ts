@@ -6,6 +6,7 @@ import {
   applyMovement,
   bump,
   cleanProduct,
+  resolveCategory,
   createProduct,
   locked,
   productIn,
@@ -28,6 +29,7 @@ const envelope = {
   revision: Type.Integer({ minimum: 0 }),
 };
 const productFields = {
+  categoryId: Type.Optional(id),
   name: Type.String({ minLength: 2, maxLength: 120 }),
   category: Type.String({ minLength: 2, maxLength: 80 }),
   unit: text(10),
@@ -95,6 +97,7 @@ export async function registerStockRoutes(app: FastifyInstance) {
             orderBy: { name: "asc" },
           });
           return {
+            categories: await tx.category.findMany({ where: { propertyId: p.id }, orderBy: [{ name: "asc" }, { id: "asc" }] }),
             revision: p.inventoryRevision,
             products: products.map(productView),
           };
@@ -162,6 +165,8 @@ export async function registerStockRoutes(app: FastifyInstance) {
         sameRevision(revision, request.body.revision);
         const p = await productIn(tx, actor.propertyId, request.params.id),
           data = cleanProduct(request.body);
+        const category = await resolveCategory(tx, actor.propertyId, request.body.category, request.body.categoryId, p.categoryId);
+        Object.assign(data, { category: category.name, categoryId: category.id });
         checkUnitQuantity(data.unit, data.minimum);
         if (
           data.unit !== p.unit &&

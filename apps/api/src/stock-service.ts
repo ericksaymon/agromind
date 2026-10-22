@@ -2,6 +2,7 @@ import { Prisma } from "./generated/prisma/client";
 import type { FastifyRequest } from "fastify";
 import { db } from "./db";
 import { failure, requireMembership, digest } from "./security";
+import { currentSession } from "./administration-service";
 import {
   stockUnits,
   type ProductInput,
@@ -11,6 +12,7 @@ import {
 } from "../../../packages/contracts/src/index";
 export type Tx = Prisma.TransactionClient;
 export type Actor = {
+  sessionId?: string;
   userId: string;
   name: string;
   role: string;
@@ -109,6 +111,7 @@ export async function stockActor(
   if (write && membership.role === "VIEWER")
     failure(403, "Seu acesso permite apenas consultar o estoque.", "FORBIDDEN");
   return {
+    sessionId: session.id,
     userId: session.userId,
     name: session.user.name,
     role: membership.role,
@@ -123,6 +126,10 @@ export async function locked<T>(
   return db.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Property" WHERE id=${actor.propertyId}::uuid FOR UPDATE`;
+      if (actor.sessionId) {
+        const fresh = await currentSession(tx, { id: actor.sessionId, userId: actor.userId }, true);
+        actor.name = fresh.user.name;
+      }
       const membership = await tx.membership.findUnique({
         where: {
           userId_propertyId: {
@@ -253,7 +260,8 @@ export async function createProduct(tx: Tx, actor: Actor, input: ProductInput) {
         .join(", ")}. Confirme que é um produto diferente para continuar.`,
       "SIMILAR_PRODUCT",
     );
-  return tx.product.create({ data: { ...data, propertyId: actor.propertyId } });
+  const category = await resolveCategory(tx, actor.propertyId, input.category, input.categoryId);
+  return tx.product.create({ data: { ...data, category: category.name, categoryId: category.id, propertyId: actor.propertyId } });
 }
 export async function applyMovement(
   tx: Tx,
@@ -483,6 +491,7 @@ export function productView(
     id: p.id,
     name: p.name,
     category: p.category,
+    categoryId: p.categoryId,
     unit: p.unit,
     minimum: p.minimum.toString(),
     minimumKnown: p.minimumKnown,
@@ -504,4 +513,11 @@ export function productView(
         (a.expiresOn || "9999").localeCompare(b.expiresOn || "9999"),
       ),
   };
+}
+
+export async function resolveCategory(tx: Tx, propertyId: string, name: string, categoryId?: string, currentCategoryId?: string) {
+  const category = categoryId ? await tx.category.findFirst({ where: { id: categoryId, propertyId } }) : await tx.category.findUnique({ where: { propertyId_nameKey: { propertyId, nameKey: keyOf(name) } } });
+  if (!category || (category.archived && category.id !== currentCategoryId)) failure(400, "Selecione uma categoria ativa desta propriedade. Peça ao administrador para criar categorias novas.", "CATEGORY_REQUIRED");
+  if (categoryId && keyOf(name) !== category.nameKey) failure(409, "A categoria mudou. Recarregue a seleção.", "STALE_CATEGORY");
+  return category;
 }

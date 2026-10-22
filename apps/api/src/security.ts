@@ -45,11 +45,14 @@ export async function requireSession(request: FastifyRequest, verified = false) 
   if (verified && !session.user.emailVerifiedAt) failure(403, "Confirme seu e-mail para continuar.", "EMAIL_NOT_VERIFIED");
   return session;
 }
-export async function createSession(userId: string, request: FastifyRequest, reply: FastifyReply) {
+export async function createSession(userId: string, request: FastifyRequest, reply: FastifyReply, expectedHash?: string) {
   const raw = randomToken();
   const membership = await db.membership.findFirst({ where: { userId }, orderBy: { property: { createdAt: "asc" } } });
   const previous = request.cookies[sessionCookie];
   await db.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId}::uuid FOR UPDATE`;
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    if (expectedHash && user.passwordHash !== expectedHash) failure(401, "Sua senha mudou. Entre novamente.", "INVALID_CREDENTIALS");
     if (previous) await tx.session.deleteMany({ where: { tokenHash: digest(previous) } });
     await tx.session.create({ data: { userId, tokenHash: digest(raw), activePropertyId: membership?.propertyId, expiresAt: new Date(Date.now() + 7 * 86_400_000) } });
   });

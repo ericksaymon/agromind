@@ -6,6 +6,7 @@ import { db } from "../src/db";
 import { dateKey } from "../src/analysis-common";
 import { demoFixture } from "../src/demo-fixture";
 import { processAnalysis } from "../src/analysis-service";
+import {keyOf} from "../src/stock-service";
 const folder = new URL("../../../.private/", import.meta.url);
 const manifest = new URL("demo.local.json", folder);
 type Manifest = {
@@ -40,6 +41,7 @@ try {
   const result = await db.$transaction(
     async (tx) => {
       if (previous) {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id=${previous.userId}::uuid FOR UPDATE`;
         const owner = await tx.user.findUnique({
           where: { id: previous.userId },
         });
@@ -47,7 +49,7 @@ try {
           throw new Error(
             "O proprietário da demonstração diverge do manifesto. Nenhum dado foi apagado.",
           );
-        for (const id of previous.propertyIds) {
+        for (const id of [...previous.propertyIds].sort()) {
           await tx.$queryRaw`SELECT id FROM "Property" WHERE id = ${id}::uuid FOR UPDATE`;
           const p = await tx.property.findUnique({
             where: { id },
@@ -63,6 +65,7 @@ try {
               "A propriedade deixou de ser uma demonstração isolada. Reinicialização bloqueada.",
             );
         }
+        await tx.administrativeEvent.deleteMany({ where: { propertyId: { in: previous.propertyIds } } });
         await tx.property.deleteMany({
           where: { id: { in: previous.propertyIds } },
         });
@@ -107,7 +110,8 @@ try {
       );
       for (const p of fixture) {
         const { lots, movements, ...product } = p;
-        await tx.product.create({ data: product });
+        const category=await tx.category.upsert({where:{propertyId_nameKey:{propertyId:first.id,nameKey:keyOf(p.category)}},create:{propertyId:first.id,name:p.category,nameKey:keyOf(p.category)},update:{}});
+        await tx.product.create({ data: {...product,categoryId:category.id} });
         await tx.stockLot.createMany({ data: lots });
         await tx.stockMovement.createMany({
           data: movements.map(({ sequence: _sequence, ...m }) => m),

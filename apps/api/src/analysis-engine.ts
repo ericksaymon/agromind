@@ -8,7 +8,7 @@ export { dateKey, shiftDay, RULE_VERSION } from "./analysis-common";
 const D = (v: string | number | Prisma.Decimal) => new Prisma.Decimal(v);
 const sum = (values: Prisma.Decimal[]) => values.reduce((a, b) => a.plus(b), D(0));
 const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? null;
-export type AnalysisInput = Product & { lots: StockLot[]; movements: StockMovement[] };
+export type AnalysisInput = Omit<Product, "categoryId"> & { lots: StockLot[]; movements: StockMovement[] };
 export function calculateAnalysis(products: AnalysisInput[], referenceDay: string, timezone: string, revision: number, policy: AnalysisPolicy, options: IntelligenceOptions = {}): AnalysisResult {
   const alerts: AnalysisAlert[] = [];
   const metrics: ProductAnalysis[] = [];

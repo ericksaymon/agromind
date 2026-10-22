@@ -23,6 +23,7 @@ model User {
   name String @db.VarChar(120)
   email String @unique @db.VarChar(254)
   passwordHash String
+  profileVersion Int @default(1)
   emailVerifiedAt DateTime?
   termsVersion String @default("2026-10-21-local")
   acceptedTermsAt DateTime @default(now())
@@ -30,6 +31,8 @@ model User {
   sessions Session[]
   memberships Membership[]
   tokens ActionToken[]
+  accountRequests AccountRequest[]
+  emailChanges EmailChangeRequest[]
 }
 model Property {
   id String @id @default(uuid()) @db.Uuid
@@ -38,6 +41,7 @@ model Property {
   timezone String @db.VarChar(80)
   phone String? @db.VarChar(30)
   startMethod StartMethod
+  settingsVersion Int @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   memberships Membership[]
@@ -57,6 +61,8 @@ model Property {
   products Product[]
   imports ImportBatch[]
   requests StockRequest[]
+  categories Category[]
+  invitations Invitation[]
 }
 
 enum StockKind {
@@ -75,6 +81,8 @@ model Product {
   name String @db.VarChar(120)
   nameKey String @db.VarChar(120)
   category String @db.VarChar(80)
+  categoryId String @default(dbgenerated()) @db.Uuid
+  catalogCategory Category @relation(fields: [propertyId, categoryId], references: [propertyId, id], onDelete: NoAction, onUpdate: NoAction, map: "Product_category_scope_fk")
   unit String @db.VarChar(10)
   minimum Decimal @default(0) @db.Decimal(18,3)
   minimumKnown Boolean @default(false)
@@ -219,7 +227,8 @@ model ImportBatch {
 model Membership {
   userId String @db.Uuid
   propertyId String @db.Uuid
-  role Role @default(ADMIN)
+  role Role @default(VIEWER)
+  version Int @default(1)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   @@id([userId, propertyId])
@@ -232,6 +241,7 @@ model Session {
   activePropertyId String? @db.Uuid
   expiresAt DateTime
   createdAt DateTime @default(now())
+  reauthenticatedAt DateTime?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeProperty Property? @relation(fields: [activePropertyId], references: [id], onDelete: SetNull)
   @@index([userId])
@@ -248,4 +258,86 @@ model ActionToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, kind])
   @@index([expiresAt])
+}
+
+model Category {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  name String @db.VarChar(80)
+  nameKey String @db.VarChar(80)
+  archived Boolean @default(false)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "Category_property_fk")
+  products Product[]
+  @@unique([propertyId, nameKey])
+  @@unique([propertyId, id])
+}
+model AdministrativeEvent {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String? @db.Uuid
+  userId String @db.Uuid
+  actorName String @db.VarChar(120)
+  kind String @db.VarChar(40)
+  reason String @db.VarChar(500)
+  details Json
+  correlation String @db.VarChar(100)
+  createdAt DateTime @default(now())
+  @@index([propertyId, createdAt, id])
+  @@index([userId, createdAt, id])
+}
+model AccountRequest {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  key String @db.VarChar(100)
+  hash String @db.Char(64)
+  result Json
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "account_request_user_fk")
+  @@unique([userId, key])
+}
+model Invitation {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  email String @db.VarChar(254)
+  role Role
+  issuerId String @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  status String @default("QUEUED") @db.VarChar(16)
+  version Int @default(1)
+  predecessorId String? @db.Uuid
+  acceptedBy String? @db.Uuid
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "invitation_property_fk")
+  deliveries MailOutbox[]
+  @@index([propertyId, createdAt, id])
+}
+model MailOutbox {
+  id String @id @default(uuid()) @db.Uuid
+  intent String @unique @db.VarChar(100)
+  invitationId String? @db.Uuid
+  encrypted String
+  status String @default("QUEUED") @db.VarChar(20)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil DateTime?
+  createdAt DateTime @default(now())
+  invitation Invitation? @relation(fields: [invitationId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "outbox_invitation_fk")
+  @@index([status, nextAttemptAt])
+}
+model EmailChangeRequest {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  oldEmail String @db.VarChar(254)
+  newEmail String @db.VarChar(254)
+  oldTokenHash String @unique @db.Char(64)
+  newTokenHash String @unique @db.Char(64)
+  oldConfirmedAt DateTime?
+  newConfirmedAt DateTime?
+  status String @default("PENDING") @db.VarChar(16)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "email_change_user_fk")
+  @@index([userId, status])
 }
