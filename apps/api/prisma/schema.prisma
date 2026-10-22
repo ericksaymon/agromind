@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+enum ActionKind {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+enum StartMethod {
+  IMPORT
+  MANUAL
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  email String @unique @db.VarChar(254)
+  passwordHash String
+  emailVerifiedAt DateTime?
+  termsVersion String @default("2026-10-21-local")
+  acceptedTermsAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  sessions Session[]
+  memberships Membership[]
+  tokens ActionToken[]
+}
+model Property {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  responsible String @db.VarChar(120)
+  timezone String @db.VarChar(80)
+  phone String? @db.VarChar(30)
+  startMethod StartMethod
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships Membership[]
+  sessions Session[]
+  inventoryRevision Int @default(0)
+  products Product[]
+  imports ImportBatch[]
+  requests StockRequest[]
+}
+
+enum StockKind {
+  OPENING
+  IN
+  CONSUMPTION
+  DISPOSAL
+  ADJUST_IN
+  ADJUST_OUT
+  REVERSAL
+}
+model Product {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(120)
+  nameKey String @db.VarChar(120)
+  category String @db.VarChar(80)
+  unit String @db.VarChar(10)
+  minimum Decimal @default(0) @db.Decimal(18,3)
+  archived Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lots StockLot[]
+  movements StockMovement[]
+  @@unique([propertyId, nameKey])
+  @@index([propertyId, archived])
+}
+model StockLot {
+  id String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  code String @db.VarChar(80)
+  expiresOn DateTime? @db.Date
+  expiryStatus String @default("UNKNOWN") @db.VarChar(12)
+  unitCost Decimal? @db.Decimal(18,4)
+  supplier String? @db.VarChar(120)
+  balance Decimal @default(0) @db.Decimal(18,3)
+  createdAt DateTime @default(now())
+  movements StockMovement[]
+  @@unique([productId, code])
+}
+model StockMovement {
+  id String @id @default(uuid()) @db.Uuid
+  sequence BigInt @unique @default(autoincrement())
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lotId String @db.Uuid
+  lot StockLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  kind StockKind
+  delta Decimal @db.Decimal(18,3)
+  unitCost Decimal? @db.Decimal(18,4)
+  occurredAt DateTime
+  recordedAt DateTime @default(now())
+  actorId String @db.Uuid
+  actorName String @db.VarChar(120)
+  destination String? @db.VarChar(120)
+  notes String? @db.VarChar(500)
+  source String @db.VarChar(12)
+  requestKey String @db.VarChar(100)
+  reversalOf String? @unique @db.Uuid
+  importBatchId String? @db.Uuid
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  fingerprint String? @db.Char(64)
+  @@index([productId, occurredAt])
+  @@index([lotId, occurredAt])
+  @@index([fingerprint])
+}
+model StockRequest {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  key String @db.VarChar(100)
+  hash String @db.Char(64)
+  result Json
+  createdAt DateTime @default(now())
+  @@unique([propertyId, key])
+}
+model ImportBatch {
+  id String @id @default(uuid()) @db.Uuid
+  propertyId String @db.Uuid
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  fileName String @db.VarChar(180)
+  fileHash String @db.Char(64)
+  mode String @db.VarChar(12)
+  status String @default("DRAFT") @db.VarChar(12)
+  revision Int
+  raw Json
+  preview Json?
+  model String? @db.VarChar(100)
+  analysisNote String? @db.VarChar(500)
+  result Json?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  confirmedAt DateTime?
+  movements StockMovement[]
+  @@index([propertyId, fileHash])
+}
+model Membership {
+  userId String @db.Uuid
+  propertyId String @db.Uuid
+  role Role @default(ADMIN)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  @@id([userId, propertyId])
+  @@index([propertyId])
+}
+model Session {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  userId String @db.Uuid
+  activePropertyId String? @db.Uuid
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeProperty Property? @relation(fields: [activePropertyId], references: [id], onDelete: SetNull)
+  @@index([userId])
+  @@index([expiresAt])
+}
+model ActionToken {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  userId String @db.Uuid
+  kind ActionKind
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, kind])
+  @@index([expiresAt])
+}
