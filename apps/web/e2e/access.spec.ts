@@ -64,7 +64,7 @@ test("jornada completa de acesso, confirmação, configuração e recuperação"
   await page.reload();
   await expect(page.locator(".real-app-header")).toContainText("Sítio Sementes do Amanhã");
   await page.getByRole("link", { name: "Visão geral", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Bem-vindo, Maria." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
   await expect(page.locator(".real-app-content")).not.toContainText("Fazenda Boa Vista");
   await page.screenshot({ path: "../../tmp/phase2-dashboard-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -94,7 +94,7 @@ test("jornada completa de acesso, confirmação, configuração e recuperação"
   await page.getByLabel("Senha", { exact: true }).fill(replacement);
   await page.getByRole("button", { name: "Entrar na minha conta" }).click();
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole("heading", { name: "Bem-vindo, Maria." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

@@ -1,0 +1,76 @@
+import { test, expect, type Page } from "@playwright/test";
+import { AxeBuilder } from "@axe-core/playwright";
+import { randomUUID } from "node:crypto";
+import argon2 from "../../api/node_modules/argon2/argon2.cjs";
+import { db } from "../../api/src/db";
+import { dateKey, shiftDay } from "../../api/src/analysis-engine";
+const email = `analysis-e2e-${randomUUID()}@example.test`, password = "Teste123";
+let userId: string, propertyId: string, productId: string;
+const today = dateKey(new Date(), "America/Cuiaba");
+async function audit(page: Page, label: string) {
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), label).toEqual([]);
+}
+test.beforeAll(async () => {
+  const user = await db.user.create({ data: { name: "João do teste analítico", email, passwordHash: await argon2.hash(password), emailVerifiedAt: new Date() } }); userId = user.id;
+  const property = await db.property.create({ data: { name: "Fazenda analítica de teste", responsible: user.name, timezone: "America/Cuiaba", startMethod: "MANUAL", memberships: { create: { userId, role: "ADMIN" } } } }); propertyId = property.id;
+  const product = await db.product.create({ data: { propertyId, name: "Diesel S10", nameKey: "diesel s10", category: "Combustíveis", unit: "L", minimum: "100", minimumKnown: true } }); productId = product.id;
+  const lot = await db.stockLot.create({ data: { productId, code: "D-01", balance: "420", unitCost: "6", expiryStatus: "NA" } });
+  await db.stockMovement.create({ data: { productId, lotId: lot.id, kind: "OPENING", delta: "2220", occurredAt: new Date(shiftDay(today, -31) + "T12:00:00Z"), actorId: userId, actorName: user.name, source: "WEB", requestKey: randomUUID() } });
+  await db.stockMovement.createMany({ data: Array.from({ length: 30 }, (_, i) => ({ productId, lotId: lot.id, kind: "CONSUMPTION" as const, delta: "-60", occurredAt: new Date(shiftDay(today, -30 + i) + "T12:00:00Z"), actorId: userId, actorName: user.name, destination: "Trator", source: "WEB", requestKey: randomUUID() })) });
+});
+test.afterAll(async () => { if (propertyId) await db.property.deleteMany({ where: { id: propertyId } }); if (userId) await db.user.deleteMany({ where: { id: userId } }); await db.$disconnect(); });
+test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibilidade em desktop/celular", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
+  await page.goto("/entrar"); await page.locator('[data-form-ready="true"]').waitFor();
+  await page.getByLabel("E-mail", { exact: true }).fill(email); await page.getByLabel("Senha", { exact: true }).fill(password); await page.getByRole("button", { name: "Entrar na minha conta" }).click();
+  await expect(page).toHaveURL("/app"); await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
+  await expect(page.getByText("Autonomia ainda não calculável", { exact: true })).toBeVisible();
+  await page.goto(`/app/estoque/${productId}`);
+  await page.getByRole("button", { name: "Histórico e reposição", exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Início do histórico completo").fill(shiftDay(today, -30));
+  await dialog.getByLabel("Fim do histórico completo").fill(shiftDay(today, -1));
+  await dialog.getByLabel("Continuarei registrando todas as retiradas").check();
+  await dialog.getByLabel("Motivo / fonte da conferência").fill("Histórico sintético completo conferido");
+  await dialog.getByLabel("Conferi a cobertura declarada.").check();
+  await audit(page, "declaração de cobertura");
+  await dialog.getByRole("button", { name: "Confirmar cobertura", exact: true }).click(); await expect(dialog).not.toBeVisible();
+  await expect(page.getByText("Autonomia nominal: 7 dias", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Visão geral", exact: true }).click();
+  await expect(page.getByText("Autonomia nominal: 7 dias", { exact: true })).toBeVisible();
+  await expect(page.locator(".analysis-stats")).toContainText("2.520,00");
+  await audit(page, "painel analítico desktop"); await page.screenshot({ path: "../../tmp/phase4-dashboard-desktop.png", fullPage: true });
+  await page.getByRole("link", { name: "Alertas e decisões", exact: true }).click();
+  await page.getByRole("button", { name: /Planeje a reposição/ }).click();
+  dialog = page.getByRole("dialog"); await expect(dialog).toContainText("420 L / 60 L/dia = 7 dias");
+  await dialog.getByLabel("Estado da ação").selectOption("RESOLVED"); await dialog.getByLabel("Responsável pela ação").selectOption(userId);
+  await dialog.getByLabel("Observação da ação").fill("Reposição em planejamento, ainda sem entrada física");
+  await audit(page, "justificativa e acompanhamento"); await page.screenshot({ path: "../../tmp/phase4-alert-detail.png", fullPage: true });
+  await dialog.getByRole("button", { name: "Salvar acompanhamento" }).click();
+  await expect(page.locator(".analysis-alert-row")).toContainText("Risco ativo · Ação: Resolvida");
+  await page.getByRole("button", { name: "Regras da análise", exact: true }).click();
+  dialog = page.getByRole("dialog"); await dialog.getByLabel("Horizonte provisório de reposição (dias)").fill("8"); await dialog.getByLabel("Motivo da alteração").fill("Prazo confirmado no teste");
+  await dialog.getByRole("button", { name: "Salvar nova versão" }).click(); await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".analysis-reference")).toContainText("política 2");
+  await page.goto(`/app/estoque/${productId}`); await page.getByRole("button", { name: "Movimentar", exact: true }).click();
+  dialog = page.getByRole("dialog"); await dialog.getByLabel("Tipo de operação").selectOption("CONSUMPTION"); await dialog.getByLabel("Quantidade (L)", { exact: true }).fill("150"); await dialog.getByLabel("Destino", { exact: true }).fill("Trator 01"); await dialog.getByLabel("Data do fato").fill(today);
+  await dialog.getByRole("button", { name: "Conferir movimentação" }).click(); await dialog.getByRole("button", { name: "Confirmar movimentação" }).click();
+  await expect(page.getByText("Autonomia nominal: 4,5 dias", { exact: true })).toBeVisible(); await expect(page.locator(".stock-summary")).toContainText("270 L");
+  await page.getByText("Análises e revisões anteriores", { exact: true }).click(); await expect(page.getByRole("region", { name: "Análises anteriores" })).toContainText("7 dias");
+  await page.getByRole("link", { name: /Ver alertas deste produto/ }).click(); await expect(page.getByLabel("Buscar produto")).toHaveValue("Diesel S10");
+  await page.getByRole("button", { name: /Planeje a reposição/ }).click(); dialog = page.getByRole("dialog"); await expect(dialog).toContainText("270 L / 60 L/dia = 4.5 dias"); await expect(dialog).toContainText("Acompanhamento atualizado"); await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
+  for (const route of ["/app", "/app/alertas", `/app/estoque/${productId}`]) {
+    await page.setViewportSize({ width: 390, height: 844 }); await page.goto(route); await expect(page.locator(".analysis-reference").first()).toContainText("Análise atualizada");
+    await audit(page, route + " no celular"); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), route).toBe(true);
+    await page.screenshot({ path: `../../tmp/phase4-${route === "/app" ? "dashboard" : route.includes("estoque") ? "product" : "alerts"}-mobile.png`, fullPage: true });
+  }
+  await page.goto("/app");
+  await expect(page.getByText("Autonomia nominal: 4,5 dias", { exact: true })).toBeVisible();
+  await page.route(`**/api/properties/${propertyId}/analysis`, route => route.abort());
+  await page.getByRole("button", { name: "Atualizar análise", exact: true }).click();
+  await expect(page.locator(".analysis-reference")).toContainText("Atualização pendente"); await expect(page.locator(".stock-error[role=alert]")).toContainText("Não foi possível conectar");
+  await page.unroute(`**/api/properties/${propertyId}/analysis`);
+  await page.getByRole("button", { name: "Atualizar análise", exact: true }).click(); await expect(page.locator(".analysis-reference")).toContainText("Análise atualizada");
+  expect(errors).toEqual([]);
+});
