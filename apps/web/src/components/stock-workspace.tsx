@@ -115,11 +115,13 @@ export function StockWorkspace({
   productId,
   history = false,
   historyProductId,
+  historyFilters,
 }: {
   property: PropertySummary;
   productId?: string;
   history?: boolean;
   historyProductId?: string;
+  historyFilters?: { kind?: string; from?: string; to?: string };
 }) {
   const [inventory, setInventory] = useState<InventoryView | null>(null),
     [error, setError] = useState(""),
@@ -244,6 +246,7 @@ export function StockWorkspace({
           revision={inventory.revision}
           products={inventory.products}
           productId={historyProductId}
+          defaultFilters={historyFilters}
           refresh={reload}
         />
       ) : productId ? (
@@ -1238,20 +1241,22 @@ function History({
   products,
   productId,
   refresh,
+  defaultFilters,
 }: {
   property: PropertySummary;
   revision: number;
   products: ProductView[];
   productId?: string;
   refresh: () => Promise<void>;
+  defaultFilters?: { kind?: string; from?: string; to?: string };
 }) {
   const [rows, setRows] = useState<MovementView[] | null>(null),
     [total, setTotal] = useState(0),
     [page, setPage] = useState(1),
     [filterProduct, setFilterProduct] = useState(productId || ""),
-    [kind, setKind] = useState(""),
-    [from, setFrom] = useState(""),
-    [to, setTo] = useState(""),
+    [kind, setKind] = useState(defaultFilters?.kind || ""),
+    [from, setFrom] = useState(defaultFilters?.from || ""),
+    [to, setTo] = useState(defaultFilters?.to || ""),
     [error, setError] = useState(""),
     [reverse, setReverse] = useState<MovementView | null>(null),
     [notes, setNotes] = useState(""),
