@@ -80,8 +80,8 @@ test("acesso, confirmação, propriedade, isolamento, papéis, recuperação e r
   // Um usuário com papel de consulta lê sua propriedade, mas não a altera.
   await db.membership.create({ data: { userId: bobId, propertyId, role: "VIEWER" } });
   assert.equal((await bob.request("GET", `/api/properties/${propertyId}`)).statusCode, 200);
-  assert.equal((await bob.request("PATCH", `/api/properties/${propertyId}`, property)).statusCode, 403);
-  assert.equal((await alice.request("PATCH", `/api/properties/${propertyId}`, { ...property, name: "Sítio atualizado" })).statusCode, 200);
+  assert.equal((await bob.request("POST", `/api/properties/${propertyId}/settings`, { ...property, startMethod: undefined, key: randomToken(), reason: "Teste de permissão", version: 1 })).statusCode, 403);
+  assert.equal((await alice.request("POST", `/api/properties/${propertyId}/settings`, { ...property, startMethod: undefined, name: "Sítio atualizado", key: randomToken(), reason: "Teste de edição", version: 1 })).statusCode, 200);
   assert.equal((await reloaded.request("GET", "/api/auth/me")).json().property.name, "Sítio atualizado");
   const outsider = await new Browser().init();
   assert.equal((await outsider.request("GET", `/api/properties/${propertyId}`)).statusCode, 401);

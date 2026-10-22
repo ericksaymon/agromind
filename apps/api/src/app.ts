@@ -1,3 +1,6 @@
+import { registerAccountRoutes } from "./account-routes";
+import { registerAdministrationRoutes } from "./administration-routes";
+import { userLocks, currentSession, propertyAccess, audit } from "./administration-service";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -12,7 +15,6 @@ import type { FastifyRequest } from "fastify";
 import { registerStockRoutes } from "./stock-routes";
 import { registerAnalysisRoutes } from "./analysis-routes";
 import { registerIntelligenceRoutes } from "./intelligence-routes";
-import { bump } from "./stock-service";
 
 const email = Type.String({ format: "email", maxLength: 254 });
 const password = Type.String({ minLength: 8, maxLength: 128 });
@@ -28,7 +30,7 @@ const normalize = (value: string) => value.trim().toLowerCase();
 const validPassword = (value: string) => value.length >= 8 && value.length <= 128 && /[a-zA-ZÀ-ÿ]/.test(value) && /[0-9]/.test(value);
 
 export async function buildApp({ test = false } = {}) {
-  const app = Fastify({ logger: test ? false : { level: "info", redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-csrf-token", "res.headers.set-cookie"] }, bodyLimit: 16384, trustProxy: false });
+  const app = Fastify({ ajv: { customOptions: { removeAdditional: false } }, logger: test ? false : { level: "info", redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-csrf-token", "res.headers.set-cookie"] }, bodyLimit: 16384, trustProxy: false });
   await app.register(cookie);
   await app.register(rateLimit, { max: 180, timeWindow: "1 minute", keyGenerator: async request => {
     const token = request.cookies[sessionCookie];
@@ -42,11 +44,15 @@ export async function buildApp({ test = false } = {}) {
     reply.header("Cache-Control", "no-store").header("X-Content-Type-Options", "nosniff").header("Referrer-Policy", "no-referrer");
     validateMutation(request);
   });
+  app.addHook("preValidation", async request => {
+    const body = request.body as { email?: unknown } | null;
+    if (body && typeof body.email === "string") body.email = body.email.trim().toLowerCase();
+  });
   app.setErrorHandler((error, _request, reply) => {
     if ((error as { validation?: unknown }).validation) return reply.code(400).send({ message: "Confira os campos informados.", code: "VALIDATION_ERROR" });
-    const known = error as { statusCode?: number; code?: string; message?: string };
+    const known = error as { statusCode?: number; code?: string; message?: string; retryAfter?: number };
     if (known.code === "P2002") return reply.code(409).send({ message: "Não foi possível criar a conta. Se já possui cadastro, entre ou recupere sua senha." });
-    if (known.statusCode === 429) return reply.code(429).send({ message: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.", code: "RATE_LIMITED" });
+    if (known.statusCode === 429) { if(known.retryAfter)reply.header("Retry-After",known.retryAfter); return reply.code(429).send({ message: known.code==="INVITE_COOLDOWN"?known.message:"Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.", code: known.code==="INVITE_COOLDOWN"?known.code:"RATE_LIMITED", ...(known.retryAfter?{retryAfter:known.retryAfter}:{}) }); }
     if (known.statusCode && known.statusCode < 500) return reply.code(known.statusCode).send({ message: known.message, code: known.code });
     app.log.error({ code: known.code || "INTERNAL_ERROR" }, "Falha ao processar solicitação");
     return reply.code(503).send({ message: "Não foi possível concluir agora. Tente novamente em instantes.", code: "SERVICE_UNAVAILABLE" });
@@ -61,8 +67,8 @@ export async function buildApp({ test = false } = {}) {
     const name = request.body.name.trim();
     if (name.length < 2 || !validPassword(value)) failure(400, "Use seu nome e uma senha de 8 a 128 caracteres com letras e números.");
     const passwordHash = await argon2.hash(value, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
-    const user = await db.user.create({ data: { name, email: normalize(request.body.email), passwordHash } });
-    await createSession(user.id, request, reply);
+    const user = await db.user.create({ data: { name, email: normalize(request.body.email), passwordHash, termsVersion: "2026-10-22-local" } });
+    await createSession(user.id, request, reply, user.passwordHash);
     try { await sendAction(user, "VERIFY_EMAIL"); } catch { return reply.code(201).send({ ok: true, mailPending: true }); }
     return reply.code(201).send({ ok: true });
   });
@@ -70,7 +76,7 @@ export async function buildApp({ test = false } = {}) {
     const user = await db.user.findUnique({ where: { email: normalize(request.body.email) } });
     const valid = await argon2.verify(user?.passwordHash || dummyHash, request.body.password);
     if (!user || !valid) failure(401, "E-mail ou senha incorretos.", "INVALID_CREDENTIALS");
-    await createSession(user.id, request, reply);
+    await createSession(user.id, request, reply, user.passwordHash);
     return { ok: true };
   });
   app.post("/api/auth/logout", async (request, reply) => {
@@ -96,10 +102,12 @@ export async function buildApp({ test = false } = {}) {
     if (!token || token.kind !== "RESET_PASSWORD" || token.usedAt || token.expiresAt <= new Date()) failure(400, "Este link expirou ou já foi utilizado. Solicite outro.", "INVALID_TOKEN");
     const passwordHash = await argon2.hash(request.body.password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
     await db.$transaction(async tx => {
+      await userLocks(tx, [token.userId]);
       const used = await tx.actionToken.updateMany({ where: { id: token.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
       if (used.count !== 1) failure(400, "Este link expirou ou já foi utilizado.", "INVALID_TOKEN");
       await tx.user.update({ where: { id: token.userId }, data: { passwordHash } });
       await tx.session.deleteMany({ where: { userId: token.userId } });
+      await tx.emailChangeRequest.updateMany({ where: { userId: token.userId, status: "PENDING" }, data: { status: "CANCELED" } });
       await tx.actionToken.updateMany({ where: { userId: token.userId, kind: "RESET_PASSWORD", usedAt: null }, data: { usedAt: new Date() } });
     });
     reply.clearCookie(sessionCookie, cookieOptions);
@@ -127,9 +135,11 @@ export async function buildApp({ test = false } = {}) {
     const property = await db.$transaction(async tx => {
       // Serializa duas tentativas simultâneas de concluir a configuração inicial.
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${session.userId}::uuid FOR UPDATE`;
+      const freshSession = await currentSession(tx, session, true);
       if (await tx.membership.count({ where: { userId: session.userId } })) failure(409, "Sua propriedade já está configurada.", "ALREADY_CONFIGURED");
       const created = await tx.property.create({ data: { ...data, memberships: { create: { userId: session.userId, role: "ADMIN" } } } });
       await tx.session.update({ where: { id: session.id }, data: { activePropertyId: created.id } });
+      await audit(tx, freshSession, created.id, "PROPERTY_CREATED", "Configuração inicial pelo titular", { name: created.name });
       return created;
     });
     return reply.code(201).send({ id: property.id, startMethod: property.startMethod });
@@ -138,22 +148,17 @@ export async function buildApp({ test = false } = {}) {
     const { membership } = await requireMembership(request, request.params.id);
     return { ...membership.property, role: membership.role };
   });
-  app.patch<{ Params: Static<typeof propertyParams>; Body: Static<typeof propertyBody> }>("/api/properties/:id", { schema: { params: propertyParams, body: propertyBody } }, async request => {
-    const { session } = await requireMembership(request, request.params.id, true);
-    return db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT id FROM "Property" WHERE id=${request.params.id}::uuid FOR UPDATE`;
-      const membership = await tx.membership.findUnique({ where: { userId_propertyId: { userId: session.userId, propertyId: request.params.id } } });
-      if (membership?.role !== "ADMIN") failure(403, "Você não tem permissão para alterar esta propriedade.");
-      const result = await tx.property.update({ where: { id: request.params.id }, data: cleanProperty(request.body) });
-      await bump(tx, request.params.id);
-      return result;
-    });
-  });
   app.post<{ Body: { propertyId: string } }>("/api/auth/active-property", { schema: { body: Type.Object({ propertyId: Type.String({ format: "uuid" }) }, { additionalProperties: false }) } }, async request => {
-    const { session } = await requireMembership(request, request.body.propertyId);
-    await db.session.update({ where: { id: session.id }, data: { activePropertyId: request.body.propertyId } });
+    const identity = await requireSession(request, true);
+    await db.$transaction(async tx => {
+      await userLocks(tx, [identity.userId]);
+      const { session } = await propertyAccess(tx, identity, request.body.propertyId, false);
+      await tx.session.update({ where: { id: session.id }, data: { activePropertyId: request.body.propertyId } });
+    });
     return { ok: true };
   });
+  await registerAccountRoutes(app);
+  await registerAdministrationRoutes(app);
   await registerStockRoutes(app);
   await registerAnalysisRoutes(app);
   await registerIntelligenceRoutes(app);

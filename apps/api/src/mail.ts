@@ -4,7 +4,7 @@ import { db } from "./db";
 import { digest, randomToken } from "./security";
 import type { ActionKind } from "./generated/prisma/client";
 
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   host: settings.smtpHost, port: settings.smtpPort, secure: settings.smtpPort === 465,
   connectionTimeout: 5000, socketTimeout: 8000,
   ...(process.env.SMTP_USER ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } } : {}),
