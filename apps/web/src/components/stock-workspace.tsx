@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { apiRequest, RequestError } from "@/lib/auth-client";
+import { ProductAnalytics, ClassifyMovement } from "@/components/analysis-workspace";
 import {
   stockCategories,
   stockKinds,
@@ -113,10 +114,12 @@ export function StockWorkspace({
   property,
   productId,
   history = false,
+  historyProductId,
 }: {
   property: PropertySummary;
   productId?: string;
   history?: boolean;
+  historyProductId?: string;
 }) {
   const [inventory, setInventory] = useState<InventoryView | null>(null),
     [error, setError] = useState(""),
@@ -240,6 +243,7 @@ export function StockWorkspace({
           property={property}
           revision={inventory.revision}
           products={inventory.products}
+          productId={historyProductId}
           refresh={reload}
         />
       ) : productId ? (
@@ -256,7 +260,7 @@ export function StockWorkspace({
               />
               <Summary
                 label="Estoque mínimo"
-                value={`${number(product.minimum)} ${product.unit}`}
+                value={product.minimumKnown ? `${number(product.minimum)} ${product.unit}` : "Não confirmado"}
               />
               <Summary
                 label="Valor conhecido"
@@ -304,6 +308,7 @@ export function StockWorkspace({
                 preservada depois da primeira movimentação.
               </p>
             </section>
+            {!product.archived && <ProductAnalytics property={property} productId={product.id} revision={inventory.revision} />}
             <section className="stock-card">
               <div className="stock-card-heading">
                 <div>
@@ -496,7 +501,7 @@ export function StockWorkspace({
                           <small className="inline-unit">{p.unit}</small>
                         </td>
                         <td>
-                          {number(p.minimum)} {p.unit}
+                          {p.minimumKnown ? `${number(p.minimum)} ${p.unit}` : "Não confirmado"}
                         </td>
                         <td>
                           {valueLabel(p)}
@@ -506,15 +511,15 @@ export function StockWorkspace({
                         </td>
                         <td>
                           <span
-                            className={`stock-badge ${p.archived ? "" : Number(p.balance) < Number(p.minimum) ? "warn" : ""}`}
+                            className={`stock-badge ${!p.archived && p.minimumKnown && Number(p.balance) < Number(p.minimum) ? "warn" : ""}`}
                           >
                             {p.archived
                               ? "Arquivado"
                               : Number(p.balance) === 0
                                 ? "Sem saldo"
-                                : Number(p.balance) < Number(p.minimum)
-                                  ? "Abaixo do mínimo"
-                                  : "Disponível"}
+                                : p.minimumKnown && Number(p.balance) < Number(p.minimum)
+                                  ? "Físico abaixo do mínimo"
+                                  : "Saldo registrado"}
                           </span>
                         </td>
                         <td>
@@ -607,6 +612,7 @@ function ProductForm({
     [category, setCategory] = useState(product?.category || stockCategories[0]),
     [unit, setUnit] = useState(product?.unit || "L"),
     [minimum, setMinimum] = useState(product?.minimum || "0"),
+    [minimumKnown, setMinimumKnown] = useState(product?.minimumKnown ?? true),
     [similar, setSimilar] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -622,6 +628,7 @@ function ProductForm({
         category,
         unit,
         minimum: inputNumber(minimum),
+        minimumKnown,
         acknowledgeSimilar: similar,
         key: crypto.randomUUID(),
         revision,
@@ -667,7 +674,7 @@ function ProductForm({
               <div>
                 <dt>Estoque mínimo</dt>
                 <dd>
-                  {pending.minimum} {pending.unit}
+                  {pending.minimumKnown ? `${pending.minimum} ${pending.unit}` : "Não confirmado"}
                 </dd>
               </div>
             </dl>
@@ -733,6 +740,7 @@ function ProductForm({
               produto usa uma unidade base; sacos e embalagens precisam ser
               convertidos explicitamente.
             </p>
+            <label className="stock-checkbox"><input type="checkbox" checked={minimumKnown} onChange={e => setMinimumKnown(e.target.checked)} />Mínimo conferido nos registros ou informado pelo responsável. Zero desativa o limite.</label>
             <label className="stock-checkbox">
               <input
                 type="checkbox"
@@ -1378,6 +1386,8 @@ function History({
                       timeZone: property.timezone,
                     }).format(new Date(r.occurredAt))}
                     <small>{r.actorName}</small>
+                    {r.originalResponsible && <small>Responsável na origem: {r.originalResponsible}</small>}
+                    {r.originalLine && <small>Registro de origem: linha {r.originalLine}{r.originalReference ? ` · ${r.originalReference}` : ""}</small>}
                     <small>
                       Registrado{" "}
                       {new Intl.DateTimeFormat("pt-BR", {
@@ -1395,6 +1405,7 @@ function History({
                   </td>
                   <td>
                     <span className="stock-badge">{stockKinds[r.kind]}</span>
+                    {r.kind === "CONSUMPTION" && !r.consumptionConfirmed && <small>Saída sem natureza de uso confirmada · fora da média</small>}
                     {r.reversed && <small>Estornado</small>}
                   </td>
                   <td
@@ -1409,6 +1420,7 @@ function History({
                   </td>
                   <td>{r.source === "IMPORT" ? "Planilha" : "Painel"}</td>
                   <td>
+                    {property.role !== "VIEWER" && r.kind === "CONSUMPTION" && !r.consumptionConfirmed && !r.reversed && <ClassifyMovement property={property} movement={r} refresh={async () => { await reload(); await refresh(); }} />}
                     {property.role === "ADMIN" &&
                     r.kind !== "REVERSAL" &&
                     !r.reversed ? (

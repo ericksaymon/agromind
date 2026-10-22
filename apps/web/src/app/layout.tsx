@@ -4,6 +4,7 @@ import "@fontsource-variable/montserrat";
 import "./globals.css";
 import "./auth.css";
 import "./stock.css";
+import "./analysis.css";
 
 export const metadata: Metadata = {
   title: "AgroMind | A inteligência da sua propriedade",

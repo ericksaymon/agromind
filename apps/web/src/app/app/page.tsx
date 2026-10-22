@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { ArrowRight, Check, FileSpreadsheet, Package, ShieldCheck, Sprout } from "lucide-react";
 import { requireProperty } from "@/lib/auth-server";
-export const metadata = { title: "Minha propriedade | AgroMind" };
+import { AnalysisWorkspace } from "@/components/analysis-workspace";
+export const metadata = { title: "Visão geral | AgroMind" };
 export default async function DashboardPage() {
-  const { user, property } = await requireProperty();
-  return <><div className="real-page-heading"><span className="eyebrow section-label">SEU ESPAÇO DE GESTÃO</span><h1>Bem-vindo, {user.name.split(" ")[0]}.</h1><p>A configuração de {property.name} está pronta. O próximo passo é organizar seus insumos.</p></div><section className="welcome-property"><span className="welcome-property-icon"><Sprout size={32} /></span><div><span className="eyebrow">PROPRIEDADE CONFIGURADA</span><h2>{property.name}</h2><p>{property.responsible} · {property.timezone.replace("America/", "").replaceAll("_", " ")}</p></div><span className="setup-complete"><Check size={15} />Tudo certo para começar</span></section><div className="real-dashboard-grid"><section className="next-steps-card"><span className="eyebrow section-label">SEU PRÓXIMO PASSO</span><h2>Seu estoque começa por aqui.</h2><p>Você escolheu {property.startMethod === "IMPORT" ? "começar por uma planilha" : "começar pelo cadastro manual"}. Essa preferência está salva na propriedade.</p><Link className="button button-green" href={property.startMethod === "IMPORT" ? "/app/importar" : "/app/estoque"}>Ver meu ponto de partida <ArrowRight size={16} /></Link><small>Cadastre produtos, confira sua planilha e acompanhe o histórico das movimentações.</small></section><section className="access-ready-card"><ShieldCheck size={26} /><h2>Acesso e propriedade conectados.</h2><ul><li><Check size={15} />E-mail confirmado</li><li><Check size={15} />Sessão protegida no servidor</li><li><Check size={15} />Propriedade vinculada à sua conta</li></ul><p>As informações desta área pertencem à sua propriedade. Os dados da demonstração ficam separados.</p></section></div><section className="empty-inventory"><Package size={27} /><div><h2>Seus insumos, com histórico.</h2><p>Consulte saldos por lote e registre entradas, consumo e descarte.</p></div><Link href="/app/estoque">Abrir meu estoque <ArrowRight size={15} /></Link></section></>;
+  const { property } = await requireProperty();
+  return <AnalysisWorkspace key={property.id} property={property} />;
 }

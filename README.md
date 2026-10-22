@@ -44,12 +44,18 @@ pnpm test:web
 
 Antes do primeiro teste de navegador, instale o Chromium com `pnpm --filter @agromind/web exec playwright install chromium`. Se já tiver um executável compatível, use `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` para apontá-lo. Os testes de API precisam do PostgreSQL/Mailpit; os testes de navegador também precisam da API/web em execução. As contas e propriedades criadas pelos testes são removidas ao final; não são contas de uso do produto.
 
-**Etapas 1, 2 e 3 implementadas localmente.** A landing/demonstração usa fixtures temporárias. Contas, propriedades, produtos, lotes, custos, movimentações e importações são persistidos no PostgreSQL. A área privada tem cadastro/edição, busca/filtros, histórico, estorno administrativo e importação CSV/XLSX com prévia, correção e confirmação.
+**Etapas 1 a 4 implementadas localmente.** A landing/demonstração usa fixtures temporárias. Contas, propriedades, produtos, lotes, custos, movimentações e importações são persistidos no PostgreSQL. A área privada tem cadastro/edição, busca/filtros, histórico, estorno administrativo e importação CSV/XLSX com prévia, correção e confirmação.
 
 Estoque: `http://localhost:3000/app/estoque` · Importação: `http://localhost:3000/app/importar` · Histórico: `http://localhost:3000/app/movimentacoes`.
 
 A análise assistida por IA usa OpenRouter e recomenda inicialmente `google/gemini-3.8-flash`. Para ativar, configure `OPENROUTER_API_KEY` no `.env` privado; `OPENROUTER_MODEL` troca o modelo. Reinicie a API. Somente os cabeçalhos são enviados ao clicar no botão; revisão humana e validação no backend continuam obrigatórias. Sem credencial ou em caso de falha, associe as colunas manualmente. Em 22/10/2026, a chamada real foi validada em três casos sintéticos e em uma jornada pelo navegador até a importação confirmada. O modelo anterior, Gemini 2.5 Flash, foi substituído porque seu endpoint não atendia à política ZDR da conta. O endpoint compatível de Gemini 3.8 Flash funciona sem alterar essa política. A amostra não é uma medida de precisão geral.
 
-Próxima entrega: dashboard e alertas analíticos reais (etapa 4). WhatsApp permanece na etapa 6; publicação na Oracle na etapa 8.
+Painel: `http://localhost:3000/app` · Alertas: `http://localhost:3000/app/alertas`.
 
-Três de oito etapas correspondem a **37,5% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
+Dashboard, consumo, autonomia, validade e acompanhamento usam dados reais da propriedade. No detalhe do produto, confirme o intervalo de histórico completo antes de obter projeções: uma posição isolada não comprova consumo. Mínimo e validade desconhecidos ficam explícitos. A importação preserva responsável histórico, referência e linha; saídas genéricas podem ser classificadas como uso no histórico com motivo auditável.
+
+A API executa a rotina analítica a cada 10 segundos, reavalia mudanças de data no fuso local e retoma falhas a partir do estado persistido. Precisa permanecer em execução. O núcleo analítico é determinístico e funciona sem OpenRouter. Os testes atuais cobrem 23 casos de API/cálculo e 4 jornadas de navegador, com dados sintéticos. Registros reais do evento ainda precisam ser recebidos para validação oficial.
+
+Próxima entrega: inteligência, finanças e simulações (etapa 5). WhatsApp permanece na etapa 6; publicação na Oracle na etapa 8.
+
+Quatro de oito etapas correspondem a **50% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
