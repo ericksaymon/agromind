@@ -2,20 +2,14 @@ import { Prisma } from "./generated/prisma/client";
 import type { Product, StockLot, StockMovement } from "./generated/prisma/client";
 import type { AnalysisAlert, AnalysisPolicy, AnalysisResult, ProductAnalysis } from "../../../packages/contracts/src/index";
 
-export const RULE_VERSION = "inventory-4.2";
+import { dateKey, shiftDay, dayStamp as stamp, RULE_VERSION } from "./analysis-common";
+import { buildIntelligence, type IntelligenceOptions } from "./intelligence-engine";
+export { dateKey, shiftDay, RULE_VERSION } from "./analysis-common";
 const D = (v: string | number | Prisma.Decimal) => new Prisma.Decimal(v);
 const sum = (values: Prisma.Decimal[]) => values.reduce((a, b) => a.plus(b), D(0));
-const formatters = new Map<string, Intl.DateTimeFormat>();
-export function dateKey(date: Date, timezone: string) {
-  let formatter = formatters.get(timezone);
-  if (!formatter) { formatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }); formatters.set(timezone, formatter); }
-  return formatter.format(date);
-}
-const stamp = (day: string) => Date.parse(day + "T00:00:00Z") / 86400000;
-export const shiftDay = (day: string, days: number) => new Date((stamp(day) + days) * 86400000).toISOString().slice(0, 10);
 const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? null;
 export type AnalysisInput = Product & { lots: StockLot[]; movements: StockMovement[] };
-export function calculateAnalysis(products: AnalysisInput[], referenceDay: string, timezone: string, revision: number, policy: AnalysisPolicy): AnalysisResult {
+export function calculateAnalysis(products: AnalysisInput[], referenceDay: string, timezone: string, revision: number, policy: AnalysisPolicy, options: IntelligenceOptions = {}): AnalysisResult {
   const alerts: AnalysisAlert[] = [];
   const metrics: ProductAnalysis[] = [];
   let riskValue = D(0), value = D(0), unpricedLots = 0, expiringLots = 0;
@@ -108,9 +102,11 @@ export function calculateAnalysis(products: AnalysisInput[], referenceDay: strin
     }
     for (const [id, qty] of riskByLot) { const l = lots.find(l => l.id === id)!; if (l.unitCost !== null) riskValue = riskValue.plus(Prisma.Decimal.min(qty, l.balance).mul(l.unitCost)); }
   }
+  const intelligence = buildIntelligence(products, metrics, referenceDay, timezone, revision, policy, { ...options, propertyKnownValue: value.toString() });
+  alerts.push(...intelligence.signals);
   const rank = { CRITICAL: 0, HIGH: 1, MODERATE: 2 };
   alerts.sort((a, b) => rank[a.priority] - rank[b.priority] || (a.deadlineDays ?? Infinity) - (b.deadlineDays ?? Infinity) || D(b.knownValue).cmp(a.knownValue) || a.identity.localeCompare(b.identity));
-  return { referenceDay, timezone, ruleVersion: RULE_VERSION, revision, policy, products: metrics, alerts,
+  return { referenceDay, timezone, ruleVersion: RULE_VERSION, revision, policy, products: metrics, alerts, intelligence,
     summary: { products: metrics.length, knownValue: value.toFixed(2), unpricedLots, criticalProducts: new Set(alerts.filter(a => a.priority === "CRITICAL").map(a => a.productId)).size,
       expiringLots, knownRiskValue: riskValue.toFixed(2), incompleteProducts: metrics.filter(p => p.limitations.length > 0).length } };
 }

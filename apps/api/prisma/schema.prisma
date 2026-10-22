@@ -50,6 +50,7 @@ model Property {
   reorderDays Int @default(7)
   expiryWarningDays Int @default(30)
   inactivityDays Int @default(90)
+  intelligencePolicy Json @default("{}")
   analyses AnalysisSnapshot[]
   alerts AlertOccurrence[]
   analysisEvents AnalysisEvent[]

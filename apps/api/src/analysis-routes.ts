@@ -5,6 +5,8 @@ import { bump, locked, stockActor, validDay, dayInZone, sameRevision } from "./s
 import { failure } from "./security";
 import { processAnalysis, analysisView } from "./analysis-service";
 import { shiftDay } from "./analysis-engine";
+import { propertyPolicy } from "./analysis-policy";
+import { Prisma } from "./generated/prisma/client";
 const id = Type.String({ format: "uuid" });
 const params = Type.Object({ propertyId: id });
 const item = Type.Object({ propertyId: id, id });
@@ -39,7 +41,18 @@ export async function registerAnalysisRoutes(app: FastifyInstance) {
       await bump(tx, actor.propertyId); return { ok: true };
     });
   });
-  const policyBody = Type.Object({ policyVersion: Type.Integer({ minimum: 1 }), reorderDays: Type.Integer({ minimum: 1, maximum: 730 }), expiryWarningDays: Type.Integer({ minimum: 1, maximum: 365 }), inactivityDays: Type.Integer({ minimum: 7, maximum: 730 }), reason }, { additionalProperties: false });
+  const intelligenceSchema = Type.Object({
+    comparisonDays: Type.Integer({ minimum: 7, maximum: 90 }),
+    consumptionChangePercent: Type.Integer({ minimum: 10, maximum: 500 }),
+    trendPercent: Type.Integer({ minimum: 5, maximum: 200 }),
+    withdrawalMultiplier: Type.Integer({ minimum: 2, maximum: 10 }),
+    withdrawalMinSamples: Type.Integer({ minimum: 5, maximum: 50 }),
+    excessDays: Type.Integer({ minimum: 7, maximum: 730 }),
+    priceChangePercent: Type.Integer({ minimum: 5, maximum: 500 }),
+    highValuePercent: Type.Integer({ minimum: 1, maximum: 100 }),
+    minimumChangeQuantity: Type.String({ pattern: "^(?:0|[1-9][0-9]{0,8})(?:\\.[0-9]{1,3})?$", maxLength: 13 }),
+  }, { additionalProperties: false });
+  const policyBody = Type.Object({ policyVersion: Type.Integer({ minimum: 1 }), reorderDays: Type.Integer({ minimum: 1, maximum: 730 }), expiryWarningDays: Type.Integer({ minimum: 1, maximum: 365 }), inactivityDays: Type.Integer({ minimum: 7, maximum: 730 }), intelligence: Type.Optional(intelligenceSchema), reason }, { additionalProperties: false });
   app.post<{ Params: Static<typeof item>; Body: { reason: string } }>("/api/properties/:propertyId/movements/:id/classify", { schema: { params: item, body: Type.Object({ reason }, { additionalProperties: false }) } }, async req => {
     const actor = await stockActor(req, req.params.propertyId, true);
     return locked(actor, async tx => {
@@ -58,9 +71,9 @@ export async function registerAnalysisRoutes(app: FastifyInstance) {
       if (actor.role !== "ADMIN") failure(403, "Somente administradores podem alterar políticas.");
       const p = await tx.property.findUniqueOrThrow({ where: { id: actor.propertyId } });
       if (p.policyVersion !== req.body.policyVersion) failure(409, "A política mudou. Atualize antes de salvar.");
-      const { reason: note, policyVersion: _, ...data } = req.body;
-      await tx.property.update({ where: { id: p.id }, data: { ...data, policyVersion: { increment: 1 }, analysisPending: true } });
-      await tx.analysisEvent.create({ data: { propertyId: p.id, kind: "POLICY_CHANGED", actorId: actor.userId, actorName: actor.name, details: { before: { reorderDays: p.reorderDays, expiryWarningDays: p.expiryWarningDays, inactivityDays: p.inactivityDays, policyVersion: p.policyVersion }, after: data, reason: note } } });
+      const { reason: note, policyVersion: _, intelligence, ...data } = req.body;
+      await tx.property.update({ where: { id: p.id }, data: { ...data, ...(intelligence ? { intelligencePolicy: intelligence as unknown as Prisma.InputJsonValue } : {}), policyVersion: { increment: 1 }, analysisPending: true } });
+      await tx.analysisEvent.create({ data: { propertyId: p.id, kind: "POLICY_CHANGED", actorId: actor.userId, actorName: actor.name, details: { before: propertyPolicy(p) as unknown as Prisma.InputJsonValue, after: { ...data, intelligence: intelligence ?? propertyPolicy(p).intelligence! }, reason: note } as unknown as Prisma.InputJsonValue } });
       return { ok: true };
     });
   });

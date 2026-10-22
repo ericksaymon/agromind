@@ -11,6 +11,7 @@ import type { AuthSession } from "../../../packages/contracts/src/index";
 import type { FastifyRequest } from "fastify";
 import { registerStockRoutes } from "./stock-routes";
 import { registerAnalysisRoutes } from "./analysis-routes";
+import { registerIntelligenceRoutes } from "./intelligence-routes";
 import { bump } from "./stock-service";
 
 const email = Type.String({ format: "email", maxLength: 254 });
@@ -155,6 +156,7 @@ export async function buildApp({ test = false } = {}) {
   });
   await registerStockRoutes(app);
   await registerAnalysisRoutes(app);
+  await registerIntelligenceRoutes(app);
   return app;
 }
 

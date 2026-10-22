@@ -2,6 +2,7 @@ import { db } from "./db";
 import { Prisma } from "./generated/prisma/client";
 import { calculateAnalysis, dateKey, RULE_VERSION } from "./analysis-engine";
 import type { AnalysisView, AnalysisResult, AlertOccurrenceView } from "../../../packages/contracts/src/index";
+import { propertyPolicy } from "./analysis-policy";
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 
 export async function processAnalysis(propertyId: string, now = new Date()) {
@@ -12,14 +13,14 @@ export async function processAnalysis(propertyId: string, now = new Date()) {
       const p = await tx.property.findUnique({ where: { id: propertyId } });
       if (!p) return null;
       const referenceDay = dateKey(now, p.timezone);
-      const policy = { reorderDays: p.reorderDays, expiryWarningDays: p.expiryWarningDays, inactivityDays: p.inactivityDays, policyVersion: p.policyVersion };
+      const policy = propertyPolicy(p);
       const key = { propertyId, revision: p.inventoryRevision, policyVersion: p.policyVersion, referenceDay, ruleVersion: RULE_VERSION };
       const existing = await tx.analysisSnapshot.findUnique({ where: { propertyId_revision_policyVersion_referenceDay_ruleVersion: key } });
       if (existing) {
         if (p.analysisPending || p.analysisError) await tx.property.update({ where: { id: propertyId }, data: { analysisPending: false, analysisError: null } });
         return existing;
       }
-      const products = await tx.product.findMany({ where: { propertyId, archived: false }, include: { lots: true, movements: true }, orderBy: { name: "asc" } });
+      const products = await tx.product.findMany({ where: { propertyId }, include: { lots: true, movements: true }, orderBy: { name: "asc" } });
       const result = calculateAnalysis(products, referenceDay, p.timezone, p.inventoryRevision, policy);
       const snapshot = await tx.analysisSnapshot.create({ data: { ...key, timezone: p.timezone, result: json(result) } });
       const active = await tx.alertOccurrence.findMany({ where: { propertyId, closedAt: null } });
@@ -68,7 +69,7 @@ export async function analysisView(propertyId: string): Promise<AnalysisView> {
     const result = snapshot ? snapshot.result as unknown as AnalysisResult : null;
     return { status: p.analysisError ? "ERROR" : current ? result!.products.length ? "CURRENT" : "EMPTY" : snapshot ? "STALE" : "PENDING",
       snapshotId: snapshot?.id ?? null, calculatedAt: snapshot?.createdAt.toISOString() ?? null, result, error: p.analysisError,
-      policy: { reorderDays: p.reorderDays, expiryWarningDays: p.expiryWarningDays, inactivityDays: p.inactivityDays, policyVersion: p.policyVersion }, revision: p.inventoryRevision,
+      policy: propertyPolicy(p), revision: p.inventoryRevision,
       alerts: alerts.map(a => ({ ...a, evidence: a.evidence as unknown as AlertOccurrenceView["evidence"], actionState: a.actionState as AlertOccurrenceView["actionState"], firstSeenAt: a.firstSeenAt.toISOString(), lastSeenAt: a.lastSeenAt.toISOString(), closedAt: a.closedAt?.toISOString() ?? null })) };
   }, { isolationLevel: "RepeatableRead" });
 }
