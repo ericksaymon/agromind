@@ -14,6 +14,8 @@
     "start": "node scripts/serve.mjs start",
     "typecheck": "pnpm --filter @agromind/api typecheck && pnpm --filter @agromind/web typecheck",
     "test:api": "pnpm --filter @agromind/api test",
-    "test:web": "pnpm --filter @agromind/web exec playwright test"
+    "test:web": "pnpm --filter @agromind/web exec playwright test",
+    "demo:reset": "pnpm --filter @agromind/api exec tsx scripts/demo-reset.ts",
+    "benchmark:analysis": "pnpm --filter @agromind/api exec tsx scripts/benchmark-analysis.ts"
   }
 }

@@ -64,4 +64,10 @@ Relatórios aceitam até 365 dias completos, com paginação de produtos/eventos
 
 Próxima entrega: WhatsApp oficial (etapa 6); publicação na Oracle permanece na etapa 8.
 
+Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos registros selecionados, referência externa opcional de conferência, qualidade dos dados no produto, explicações expansíveis e atalho de alerta para planejamento com o produto selecionado. A referência externa da prévia é apenas local à tela; não ajusta saldos nem é persistida.
+
+`pnpm demo:reset` cria ou reinicializa uma demonstração operacional com seis produtos, histórico coerente e duas propriedades. Exige `APP_ENV=local` e banco em loopback. O comando só remove as propriedades identificadas no manifesto privado e bloqueia a operação se perderem a identificação ou receberem outros membros. As sessões da conta de demonstração são revogadas ao reinicializar. O acesso gerado fica em `.private/demo.local.json`, ignorado pelo Git. A demo pública de `/demo` continua separada desses dados persistidos.
+
+`pnpm benchmark:analysis` mede o motor em memória com 1.000, 10.000 e 50.000 movimentos sintéticos e grava o resultado em `tmp/analysis-benchmark.json`. A medição não inclui banco/rede e não certifica capacidade de produção. A busca da amostra de retiradas incomuns considera primeiro os últimos 200 eventos, mantendo a janela e as regras anteriores.
+
 Cinco de oito etapas correspondem a **62,5% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
