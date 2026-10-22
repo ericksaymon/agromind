@@ -15,6 +15,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [name, setName] = useState(""), [email, setEmail] = useState(""), [password, setPassword] = useState(""), [confirmation, setConfirmation] = useState("");
   useEffect(() => {
     setHydrated(true);
+    const next = new URLSearchParams(window.location.search).get("returnTo");
+    if (next === "/convite" || next === "/conta") sessionStorage.setItem("agromind.returnTo", next);
     if (capturedMode.current === mode) return;
     capturedMode.current = mode;
     if (mode === "reset" || mode === "confirm") {
@@ -37,7 +39,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível concluir. Tente novamente."); }
     finally { setBusy(false); }
   }
-  if (success) return <div className="auth-success" role="status"><span><CircleCheck size={25} /></span><h2>{mode === "forgot" ? "Confira seu e-mail" : mode === "reset" ? "Sua senha foi atualizada" : "E-mail confirmado"}</h2><p>{mode === "forgot" ? "Se houver uma conta com esse endereço, enviamos um link válido por 30 minutos. Confira também o spam." : mode === "reset" ? "Entre com sua nova senha. As sessões anteriores foram encerradas para proteger sua conta." : "Agora você pode configurar sua propriedade e preparar seu espaço."}</p><Link className="button button-green" href={mode === "confirm" ? "/configuracao-inicial" : "/entrar"}>{mode === "confirm" ? "Continuar" : "Voltar para entrar"}<ArrowRight size={16} /></Link></div>;
+  if (success) return <div className="auth-success" role="status"><span><CircleCheck size={25} /></span><h2>{mode === "forgot" ? "Confira seu e-mail" : mode === "reset" ? "Sua senha foi atualizada" : "E-mail confirmado"}</h2><p>{mode === "forgot" ? "Se houver uma conta com esse endereço, enviamos um link válido por 30 minutos. Confira também o spam." : mode === "reset" ? "Entre com sua nova senha. As sessões anteriores foram encerradas para proteger sua conta." : "Agora você pode configurar sua propriedade e preparar seu espaço."}</p><Link className="button button-green" href={mode === "confirm" ? "/continuar" : "/entrar"}>{mode === "confirm" ? "Continuar" : "Voltar para entrar"}<ArrowRight size={16} /></Link></div>;
   if (!tokenReady) return <p className="auth-wait" role="status"><LoaderCircle className="spin" size={17} /> Conferindo seu link…</p>;
   if ((mode === "reset" || mode === "confirm") && !token) return <div className="auth-invalid"><TriangleAlert size={25} /><h2>Precisamos de um link válido</h2><p>Abra o link recebido no e-mail. Se ele expirou, solicite um novo.</p><Link className="button button-green" href={mode === "reset" ? "/recuperar-senha" : "/verificar-email"}>Solicitar outro link <ArrowRight size={16} /></Link></div>;
   return <form onSubmit={submit} className="auth-form" inert={!hydrated} data-form-ready={hydrated} aria-busy={busy}>

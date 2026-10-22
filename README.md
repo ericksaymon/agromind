@@ -44,7 +44,7 @@ pnpm test:web
 
 Antes do primeiro teste de navegador, instale o Chromium com `pnpm --filter @agromind/web exec playwright install chromium`. Se já tiver um executável compatível, use `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` para apontá-lo. Os testes de API precisam do PostgreSQL/Mailpit; os testes de navegador também precisam da API/web em execução. As contas e propriedades criadas pelos testes são removidas ao final; não são contas de uso do produto.
 
-**Etapas 1 a 5 implementadas localmente.** A landing/demonstração usa fixtures temporárias. Contas, propriedades, produtos, lotes, custos, movimentações e importações são persistidos no PostgreSQL. A área privada tem cadastro/edição, busca/filtros, histórico, estorno administrativo e importação CSV/XLSX com prévia, correção e confirmação.
+**Etapas 1 a 5 e 7 implementadas localmente.** A landing/demonstração usa fixtures temporárias. Contas, propriedades, produtos, lotes, custos, movimentações e importações são persistidos no PostgreSQL. A área privada tem cadastro/edição, busca/filtros, histórico, estorno administrativo e importação CSV/XLSX com prévia, correção e confirmação.
 
 Estoque: `http://localhost:3000/app/estoque` · Importação: `http://localhost:3000/app/importar` · Histórico: `http://localhost:3000/app/movimentacoes`.
 
@@ -54,7 +54,7 @@ Painel: `http://localhost:3000/app` · Alertas: `http://localhost:3000/app/alert
 
 Dashboard, consumo, autonomia, validade e acompanhamento usam dados reais da propriedade. No detalhe do produto, confirme o intervalo de histórico completo antes de obter projeções: uma posição isolada não comprova consumo. Mínimo e validade desconhecidos ficam explícitos. A importação preserva responsável histórico, referência e linha; saídas genéricas podem ser classificadas como uso no histórico com motivo auditável.
 
-A API executa a rotina analítica a cada 10 segundos, reavalia mudanças de data no fuso local e retoma falhas a partir do estado persistido. Precisa permanecer em execução. O núcleo analítico é determinístico e funciona sem OpenRouter. Os testes atuais cobrem 38 casos de API/cálculo e 5 jornadas de navegador, com dados sintéticos. Registros reais do evento ainda precisam ser recebidos para validação oficial.
+A API executa a rotina analítica a cada 10 segundos, reavalia mudanças de data no fuso local e retoma falhas a partir do estado persistido. Precisa permanecer em execução. O núcleo analítico é determinístico e funciona sem OpenRouter. Os testes atuais cobrem 76 testes de API/cálculo/migração e 11 testes de navegador, com dados sintéticos. Registros reais do evento ainda precisam ser recebidos para validação oficial.
 
 Inteligência: `http://localhost:3000/app/inteligencia`. Abas de consumo, finanças, excesso/capital parado e planejamento/simulação. Períodos completos, comparação equivalente, preços por aquisição, custos por lote e critérios administrativos versionados. Os sinais alimentam a fila de alertas existente.
 
@@ -62,7 +62,7 @@ Simulação é somente leitura, inclusive para VIEWER: considera vencimentos e c
 
 Relatórios aceitam até 365 dias completos, com paginação de produtos/eventos. Bases acima de 50.000 movimentos exigem ampliar o processamento desta versão; não são truncadas silenciosamente. Hipóteses e limiares não são regras agronômicas garantidas, e não há ajuste sazonal automático.
 
-Próxima entrega: WhatsApp oficial (etapa 6); publicação na Oracle permanece na etapa 8.
+Próxima entrega: implantação na Oracle (etapa 8). WhatsApp (etapa 6) permanece adiado por decisão do usuário.
 
 Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos registros selecionados, referência externa opcional de conferência, qualidade dos dados no produto, explicações expansíveis e atalho de alerta para planejamento com o produto selecionado. A referência externa da prévia é apenas local à tela; não ajusta saldos nem é persistida.
 
@@ -70,4 +70,18 @@ Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos reg
 
 `pnpm benchmark:analysis` mede o motor em memória com 1.000, 10.000 e 50.000 movimentos sintéticos e grava o resultado em `tmp/analysis-benchmark.json`. A medição não inclui banco/rede e não certifica capacidade de produção. A busca da amostra de retiradas incomuns considera primeiro os últimos 200 eventos, mantendo a janela e as regras anteriores.
 
-Cinco de oito etapas correspondem a **62,5% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
+Seis de oito etapas correspondem a **75% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
+
+## Administração e conta — etapa 7
+
+Configurações: `/app/configuracoes` (propriedade, equipe/convites, categorias e auditoria). Conta: `/conta` (nome, troca de e-mail com duas confirmações, senha, sessões e atividade pessoal). `/conta` entrega uma estrutura pública sem dados pessoais; seus dados vêm exclusivamente da API autenticada. Convites: `/convite`, com aceite explícito pelo destinatário verificado; criar outra propriedade: `/nova-propriedade`.
+
+ADMIN gerencia acessos e catálogo; OPERATOR cadastra/movimenta; VIEWER consulta. O backend revalida sessão e papel dentro da gravação. A última pessoa ADMIN não pode perder o vínculo. Alterações administrativas usam versão, motivo e histórico; mudança de fuso exige confirmação e invalida a cobertura declarada do histórico, sem mudar os movimentos. Categorias arquivadas preservam referências existentes.
+
+A antiga alteração genérica `PATCH /api/properties/:id` foi encerrada. Configurações usam `/api/properties/:id/settings`; primeira propriedade mantém o onboarding e propriedades adicionais usam `/api/account/properties`. APIs de conta não exigem propriedade ativa.
+
+`pnpm categories:preflight` gera relatório local em `outputs/` com categorias legadas e colisões de normalização. Não funde categorias automaticamente. As migrations preservam produtos, movimentos e papéis existentes; colisões precisam ser resolvidas explicitamente antes do corte.
+
+Convites e confirmações de troca de e-mail usam outbox persistente, tentativas limitadas e conteúdo cifrado. `pnpm setup:local` gera `MAIL_ENCRYPTION_KEY` privada se faltar, preservando as demais configurações. Faça backup seguro dessa chave junto da configuração: perdê-la impede recuperar envios pendentes, que precisam ser cancelados/reemitidos. Aceite SMTP não significa entrega na caixa externa. O worker roda dentro da API; localmente, os e-mails chegam ao Mailpit.
+
+Execute testes de API sem outra instância do worker consumindo seus jobs sintéticos. Para testes de navegador, mantenha web/API/worker e Mailpit ativos. O Playwright força resolução IPv4 de localhost para evitar outro aplicativo na mesma porta IPv6. Os testes usam dados sintéticos e não certificam a base oficial ou serviço SMTP externo.

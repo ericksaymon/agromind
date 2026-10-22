@@ -612,7 +612,7 @@ function ProductForm({
   reload: () => Promise<void>;
 }) {
   const [name, setName] = useState(product?.name || ""),
-    [category, setCategory] = useState(product?.category || stockCategories[0]),
+    [category, setCategory] = useState(product?.category || ""),
     [unit, setUnit] = useState(product?.unit || "L"),
     [minimum, setMinimum] = useState(product?.minimum || "0"),
     [minimumKnown, setMinimumKnown] = useState(product?.minimumKnown ?? true),
@@ -622,6 +622,8 @@ function ProductForm({
     [pending, setPending] = useState<
       (ProductInput & { key: string; revision: number }) | null
     >(null);
+  const [catalog, setCatalog] = useState<{id:string;name:string;archived:boolean}[]>([]);
+  useEffect(() => { let active=true; apiRequest<{id:string;name:string;archived:boolean}[]>(`/api/properties/${property.id}/categories`).then(rows=>{if(active){setCatalog(rows.filter(c=>!c.archived||c.name===product?.category));if(!product)setCategory(rows.find(c=>!c.archived)?.name||"");}}).catch(e=>{if(active)setError(e.message);}); return()=>{active=false;}; }, [property.id,product]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");

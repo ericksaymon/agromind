@@ -137,7 +137,7 @@ test.beforeAll(async () => {
       {
         name: "Peça de manutenção",
         unit: "un",
-        category: "Peças",
+        category: "Peças e manutenção",
         minimum: "1",
         balance: "5",
         cost: "600",

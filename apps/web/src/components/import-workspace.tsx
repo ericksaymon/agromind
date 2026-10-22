@@ -1068,13 +1068,13 @@ function EditImportRow({
               {fields.map((f) => (
                 <label key={f}>
                   {importFields[f]}
-                  <input
+                  {f === "category" ? <select value={values[f]} onChange={e=>setValues({...values,category:e.target.value})}><option value="">Selecione uma categoria ativa</option>{values[f] && !inventory?.categories?.some(c=>!c.archived&&c.name===values[f]) && <option value={values[f]} disabled>{values[f]} (associação pendente)</option>}{inventory?.categories?.filter(c=>!c.archived).map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select> : <input
                     maxLength={500}
                     value={values[f]}
                     onChange={(e) =>
                       setValues({ ...values, [f]: e.target.value })
                     }
-                  />
+                  />}
                 </label>
               ))}
             </div>

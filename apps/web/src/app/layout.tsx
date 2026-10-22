@@ -6,6 +6,7 @@ import "./auth.css";
 import "./stock.css";
 import "./analysis.css";
 import "./intelligence.css";
+import "./settings.css";
 
 export const metadata: Metadata = {
   title: "AgroMind | A inteligência da sua propriedade",
