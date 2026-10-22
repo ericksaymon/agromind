@@ -1,0 +1,37 @@
+# Arquivos locais de infraestrutura e segredos
+.private/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Arquivos temporários de leitura e renderização
+tmp/
+
+# Materiais e planejamento permanecem apenas no workspace
+/docs/
+*.pdf
+*.docx
+*.pptx
+/WhatsApp Image*.jpeg
+/apps/web/AGENTS.md
+/apps/api/README.md
+/packages/contracts/README.md
+/apps/web/public/brand/README.md
+/data/
+/datasets/
+/backups/
+*.dump
+*.sqlite
+*.sqlite3
+
+# Dependências e builds futuros
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+apps/api/src/generated/
+test-results/
+playwright-report/

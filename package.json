@@ -1,0 +1,19 @@
+{
+  "name": "agromind",
+  "private": true,
+  "packageManager": "pnpm@10.26.2",
+  "scripts": {
+    "dev": "node scripts/serve.mjs dev",
+    "dev:web": "pnpm --filter @agromind/web dev",
+    "dev:api": "pnpm --filter @agromind/api dev",
+    "setup:local": "node scripts/setup-local.mjs",
+    "infra:up": "pnpm setup:local && docker compose --env-file .env -f deploy/compose.local.yml up -d --wait",
+    "db:generate": "pnpm --filter @agromind/api db:generate",
+    "db:migrate": "pnpm --filter @agromind/api db:migrate",
+    "build": "pnpm --filter @agromind/api build && pnpm --filter @agromind/web build",
+    "start": "node scripts/serve.mjs start",
+    "typecheck": "pnpm --filter @agromind/api typecheck && pnpm --filter @agromind/web typecheck",
+    "test:api": "pnpm --filter @agromind/api test",
+    "test:web": "pnpm --filter @agromind/web exec playwright test"
+  }
+}

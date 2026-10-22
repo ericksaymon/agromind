@@ -1,0 +1,24 @@
+name: agromind-local
+services:
+  db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: agromind
+      POSTGRES_USER: agromind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute pnpm setup:local primeiro}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - agromind_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agromind -d agromind"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - "127.0.0.1:11025:1025"
+      - "127.0.0.1:18025:8025"
+volumes:
+  agromind_db:
