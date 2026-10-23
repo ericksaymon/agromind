@@ -54,7 +54,7 @@ Painel: `http://localhost:3000/app` · Alertas: `http://localhost:3000/app/alert
 
 Dashboard, consumo, autonomia, validade e acompanhamento usam dados reais da propriedade. No detalhe do produto, confirme o intervalo de histórico completo antes de obter projeções: uma posição isolada não comprova consumo. Mínimo e validade desconhecidos ficam explícitos. A importação preserva responsável histórico, referência e linha; saídas genéricas podem ser classificadas como uso no histórico com motivo auditável.
 
-A API executa a rotina analítica a cada 10 segundos, reavalia mudanças de data no fuso local e retoma falhas a partir do estado persistido. Precisa permanecer em execução. O núcleo analítico é determinístico e funciona sem OpenRouter. Os testes atuais cobrem 76 testes de API/cálculo/migração e 11 testes de navegador, com dados sintéticos. Registros reais do evento ainda precisam ser recebidos para validação oficial.
+A API executa a rotina analítica a cada 10 segundos, reavalia mudanças de data no fuso local e retoma falhas a partir do estado persistido. Precisa permanecer em execução. O núcleo analítico é determinístico e funciona sem OpenRouter. Os testes atuais cobrem 77 testes de API/cálculo/migração e 11 testes de navegador, com dados sintéticos. Registros reais do evento ainda precisam ser recebidos para validação oficial.
 
 Inteligência: `http://localhost:3000/app/inteligencia`. Abas de consumo, finanças, excesso/capital parado e planejamento/simulação. Períodos completos, comparação equivalente, preços por aquisição, custos por lote e critérios administrativos versionados. Os sinais alimentam a fila de alertas existente.
 
@@ -62,7 +62,7 @@ Simulação é somente leitura, inclusive para VIEWER: considera vencimentos e c
 
 Relatórios aceitam até 365 dias completos, com paginação de produtos/eventos. Bases acima de 50.000 movimentos exigem ampliar o processamento desta versão; não são truncadas silenciosamente. Hipóteses e limiares não são regras agronômicas garantidas, e não há ajuste sazonal automático.
 
-Próxima entrega: implantação na Oracle (etapa 8). WhatsApp (etapa 6) permanece adiado por decisão do usuário.
+Piloto publicado na Oracle em https://agromind.ericksaymon.dev. WhatsApp (etapa 6) permanece adiado por decisão do usuário.
 
 Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos registros selecionados, referência externa opcional de conferência, qualidade dos dados no produto, explicações expansíveis e atalho de alerta para planejamento com o produto selecionado. A referência externa da prévia é apenas local à tela; não ajusta saldos nem é persistida.
 
@@ -70,7 +70,7 @@ Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos reg
 
 `pnpm benchmark:analysis` mede o motor em memória com 1.000, 10.000 e 50.000 movimentos sintéticos e grava o resultado em `tmp/analysis-benchmark.json`. A medição não inclui banco/rede e não certifica capacidade de produção. A busca da amostra de retiradas incomuns considera primeiro os últimos 200 eventos, mantendo a janela e as regras anteriores.
 
-Seis de oito etapas correspondem a **75% da contagem de etapas**; não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
+Sete de oito etapas têm implementação disponível (**87,5% da contagem de etapas**); não é uma porcentagem ponderada de esforço ou cobertura do produto. A ativação externa da IA foi validada em 22/10/2026.
 
 ## Administração e conta — etapa 7
 
@@ -85,3 +85,26 @@ A antiga alteração genérica `PATCH /api/properties/:id` foi encerrada. Config
 Convites e confirmações de troca de e-mail usam outbox persistente, tentativas limitadas e conteúdo cifrado. `pnpm setup:local` gera `MAIL_ENCRYPTION_KEY` privada se faltar, preservando as demais configurações. Faça backup seguro dessa chave junto da configuração: perdê-la impede recuperar envios pendentes, que precisam ser cancelados/reemitidos. Aceite SMTP não significa entrega na caixa externa. O worker roda dentro da API; localmente, os e-mails chegam ao Mailpit.
 
 Execute testes de API sem outra instância do worker consumindo seus jobs sintéticos. Para testes de navegador, mantenha web/API/worker e Mailpit ativos. O Playwright força resolução IPv4 de localhost para evitar outro aplicativo na mesma porta IPv6. Os testes usam dados sintéticos e não certificam a base oficial ou serviço SMTP externo.
+
+
+## Produção — piloto público
+
+Publicado em `https://agromind.ericksaymon.dev`, com banco próprio novo, serviços web/API/PostgreSQL no projeto Compose `agromind`, sem portas adicionais publicadas. DNS com proxy Cloudflare, TLS estrito e certificado de origem exclusivo. Envio pelo Resend com domínio `agromind.ericksaymon.dev` verificado; configurações e chaves permanecem em `.private/production.env`, fora do Git.
+
+Contatos públicos: `suporte@ericksaymon.dev` e `privacidade@ericksaymon.dev`, encaminhados pela Cloudflare para o destino verificado do administrador. O aceite registrado em produção usa a versão `2026-10-23-piloto`. A instalação local mantém seus dados e versão próprios.
+
+Arquivos de operação: `deploy/Dockerfile`, `deploy/compose.production.yml`, `deploy/agromind.nginx.conf`, `deploy/backup.sh` e unidades `agromind-backup.service`/`.timer`. A API confia somente no endereço definido em `API_TRUST_PROXY`; atualizar esse endereço se o container do proxy mudar de IP. O proxy elimina cabeçalhos de IP fornecidos pelo visitante e usa as faixas oficiais da Cloudflare. API, banco e worker não possuem portas públicas próprias.
+
+Na Oracle, a release ativa fica em `/home/ubuntu/apps/AgroMind/releases/20261023-pilot`, com alias `current`. A release anterior é `20261023-initial`. A imagem ativa tem digest SHA256 `b3307435d28d585fb2ec2747a31715d8cbc7baaaa6fa7ba8d9d11d8092d006e5`; o digest da release inicial preservada é `21bc4a19c710606eb006d6847d0bf4305dc862115c3c31a189c678504c26b939`. Não sobrescreva tags já publicadas: novas releases precisam de diretório/tag novos, backup prévio, migrations e `docker compose up -d --wait`. A configuração usa `.private` e `backups` compartilhados por symlink entre releases.
+
+O backup roda diariamente às 03:17 UTC, com atraso aleatório de até cinco minutos. A restauração inicial foi validada em banco separado, preservando as sete migrations, e uma cópia inicial foi trazida ao workspace privado. A cópia automática para fora da VM ainda não está configurada; manter um destino externo protegido e uma política de retenção é uma pendência operacional. O script não apaga backups automaticamente. O certificado de origem expira em 23/10/2027 e requer renovação antes dessa data.
+
+Verificações públicas sem criar contas ou gravar estoque:
+
+```powershell
+node deploy/smoke.mjs https://agromind.ericksaymon.dev
+```
+
+A checagem cobre páginas públicas, saúde do banco/API, acesso privado sem sessão, cookies Secure/SameSite, payload inválido, rejeição de origem externa e ausência de arquivos privados em URLs públicas. SMTP autenticado/TLS e envio ao destinatário técnico de testes do Resend foram validados. Aceite do provedor não comprova chegada em toda caixa pessoal; a primeira conta real deve confirmar o recebimento.
+
+Rollback: apontar `current` e `RELEASE_TAG` para uma imagem anterior compatível e recriar somente serviços AgroMind. Nunca reverter migrations destrutivamente sem análise; restaurar backup em banco separado antes de qualquer decisão. A release inicial foi preservada e usa o mesmo esquema de banco do piloto. Para retirar a publicação inicial, remover somente o registro DNS AgroMind e o include `/data/nginx/custom/agromind.conf` do `http.conf` próprio; executar `nginx -t` antes de recarregar o proxy. Não parar o proxy compartilhado nem remover volumes.
