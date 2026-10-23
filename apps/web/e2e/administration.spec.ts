@@ -278,7 +278,6 @@ test("convite completo: Mailpit, cadastro sem fazenda, confirmação e aceite ex
   await page.goto(await mailLink(request, invitedEmail, "confirmar-email"));
   await page.locator('[data-form-ready="true"]').waitFor();
   await page.getByRole("button", { name: "Confirmar meu e-mail" }).click();
-  await page.getByRole("link", { name: "Continuar", exact: true }).click();
   await expect(page).toHaveURL(/\/convite$/);
   await page
     .getByRole("button", { name: "Aceitar acesso à propriedade" })

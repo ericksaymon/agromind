@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PhoneInput } from "./phone-input";
 import {
   administrativeLabels,
   AdministrativeEventDetail,
@@ -341,9 +342,8 @@ export function SettingsWorkspace({
               </label>
               <label>
                 Telefone de contato
-                <input
+                <PhoneInput
                   name="phone"
-                  maxLength={30}
                   defaultValue={details.phone || ""}
                 />
                 <small>Este contato não conecta o WhatsApp.</small>
@@ -839,9 +839,8 @@ export function NewPropertyForm({ name }: { name: string }) {
         </label>
         <label>
           Telefone opcional
-          <input
+          <PhoneInput
             name="phone"
-            maxLength={30}
             onChange={() => {
               intent.current = "";
             }}

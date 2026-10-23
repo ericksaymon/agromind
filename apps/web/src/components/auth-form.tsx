@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, CircleCheck, Eye, EyeOff, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
-import { apiRequest, continueAfterLogin } from "@/lib/auth-client";
+import { apiRequest, continueAfterLogin, RequestError } from "@/lib/auth-client";
 
 type Mode = "login" | "register" | "forgot" | "reset" | "confirm";
 export function AuthForm({ mode }: { mode: Mode }) {
@@ -25,6 +25,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [mode]);
+  async function finishConfirmation() {
+    setBusy(true); setError("");
+    try { await continueAfterLogin(); }
+    catch (e) {
+      if (e instanceof RequestError && e.status === 401) window.location.replace("/entrar");
+      else setError(e instanceof Error ? e.message : "Não foi possível continuar. Tente novamente.");
+    } finally { setBusy(false); }
+  }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
     if ((mode === "register" || mode === "reset") && (!/[0-9]/.test(password) || !/[a-zA-ZÀ-ÿ]/.test(password))) { setError("Sua senha precisa ter letras e números."); return; }
@@ -35,11 +43,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
       if (mode === "register") { await apiRequest("/api/auth/register", { name: name.trim(), email: email.trim(), password, terms: true }); window.location.assign("/verificar-email"); }
       if (mode === "forgot") { await apiRequest("/api/auth/forgot-password", { email: email.trim() }); setSuccess(true); }
       if (mode === "reset") { await apiRequest("/api/auth/reset-password", { token, password }); setSuccess(true); }
-      if (mode === "confirm") { await apiRequest("/api/auth/verify-email", { token }); setSuccess(true); }
+      if (mode === "confirm") { await apiRequest("/api/auth/verify-email", { token }); setSuccess(true); await finishConfirmation(); }
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível concluir. Tente novamente."); }
     finally { setBusy(false); }
   }
-  if (success) return <div className="auth-success" role="status"><span><CircleCheck size={25} /></span><h2>{mode === "forgot" ? "Confira seu e-mail" : mode === "reset" ? "Sua senha foi atualizada" : "E-mail confirmado"}</h2><p>{mode === "forgot" ? "Se houver uma conta com esse endereço, enviamos um link válido por 30 minutos. Confira também o spam." : mode === "reset" ? "Entre com sua nova senha. As sessões anteriores foram encerradas para proteger sua conta." : "Agora você pode configurar sua propriedade e preparar seu espaço."}</p><Link className="button button-green" href={mode === "confirm" ? "/continuar" : "/entrar"}>{mode === "confirm" ? "Continuar" : "Voltar para entrar"}<ArrowRight size={16} /></Link></div>;
+  if (success) return <div className="auth-success" role="status"><span><CircleCheck size={25} /></span><h2>{mode === "forgot" ? "Confira seu e-mail" : mode === "reset" ? "Sua senha foi atualizada" : "E-mail confirmado"}</h2><p>{mode === "forgot" ? "Se houver uma conta com esse endereço, enviamos um link válido por 30 minutos. Confira também o spam." : mode === "reset" ? "Entre com sua nova senha. As sessões anteriores foram encerradas para proteger sua conta." : "Agora você pode configurar sua propriedade e preparar seu espaço."}</p>{mode === "confirm" ? <>{error && <p role="alert">{error}</p>}<button className="button button-green" disabled={busy} onClick={() => void finishConfirmation()}>{busy ? "Abrindo seu espaço…" : "Continuar"}<ArrowRight size={16} /></button></> : <Link className="button button-green" href="/entrar">Voltar para entrar<ArrowRight size={16} /></Link>}</div>;
   if (!tokenReady) return <p className="auth-wait" role="status"><LoaderCircle className="spin" size={17} /> Conferindo seu link…</p>;
   if ((mode === "reset" || mode === "confirm") && !token) return <div className="auth-invalid"><TriangleAlert size={25} /><h2>Precisamos de um link válido</h2><p>Abra o link recebido no e-mail. Se ele expirou, solicite um novo.</p><Link className="button button-green" href={mode === "reset" ? "/recuperar-senha" : "/verificar-email"}>Solicitar outro link <ArrowRight size={16} /></Link></div>;
   return <form onSubmit={submit} className="auth-form" inert={!hydrated} data-form-ready={hydrated} aria-busy={busy}>

@@ -1,21 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { continueAfterLogin } from "@/lib/auth-client";
+import Link from "next/link";
+import { AuthFrame } from "@/components/auth-frame";
+import { continueAfterLogin, RequestError } from "@/lib/auth-client";
 export default function Page() {
   const [error, setError] = useState("");
   useEffect(() => {
-    void continueAfterLogin().catch((e) => setError(e.message));
+    void continueAfterLogin().catch((e) => {
+      if (e instanceof RequestError && e.status === 401) window.location.replace("/entrar");
+      else setError(e instanceof Error ? e.message : "Tente novamente em instantes.");
+    });
   }, []);
-  return (
-    <main className="account-page">
-      <h1>Continuando seu acesso</h1>
-      {error ? (
-        <p role="alert">
-          {error} <a href="/entrar">Entrar</a>
-        </p>
-      ) : (
-        <p role="status">Conferindo sua conta…</p>
-      )}
-    </main>
-  );
+  if (!error) return null;
+  return <AuthFrame title="Vamos retomar seu acesso." description="Não foi possível abrir seu espaço agora.">
+    <p role="alert">{error}</p>
+    <Link className="button button-green" href="/entrar">Voltar para entrar</Link>
+  </AuthFrame>;
 }
