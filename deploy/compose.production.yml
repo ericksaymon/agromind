@@ -1,0 +1,78 @@
+name: agromind
+x-app: &app
+  image: agromind:${RELEASE_TAG:?Informe a versão da release}
+  restart: unless-stopped
+  init: true
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agromind
+      POSTGRES_USER: agromind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure a senha privada}
+    volumes: [agromind_db:/var/lib/postgresql/data]
+    networks: [database]
+    mem_limit: 1g
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U agromind -d agromind"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    <<: *app
+    command: [pnpm, --filter, "@agromind/api", start]
+    env_file: ../.private/production.env
+    environment:
+      APP_ENV: production
+      APP_ORIGIN: https://agromind.ericksaymon.dev
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [database, application]
+    mem_limit: 1g
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  web:
+    <<: *app
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api: {condition: service_healthy}
+    networks:
+      application:
+      proxy:
+        aliases: [agromind-web]
+    mem_limit: 1g
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  migrate:
+    <<: *app
+    restart: "no"
+    profiles: [tools]
+    command: [pnpm, db:migrate]
+    env_file: ../.private/production.env
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [database]
+volumes:
+  agromind_db:
+networks:
+  database:
+    internal: true
+  application:
+  proxy:
+    external: true
+    name: global-network
