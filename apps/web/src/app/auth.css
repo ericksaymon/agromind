@@ -99,7 +99,8 @@
 
 /* Estrutura privada: dados reais da conta, separada da demonstração. */
 .real-app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100svh; background: #f5f6ee; }
-.real-sidebar { padding: 28px 20px 20px; background: var(--deep); color: #cadbc0; display: flex; flex-direction: column; min-width: 0; }
+.real-sidebar { position: sticky; top: 0; align-self: start; height: 100dvh; padding: 28px 20px 20px; background: var(--deep); color: #cadbc0; display: flex; flex-direction: column; min-width: 0; }
+.real-sidebar > * { flex-shrink: 0; }
 .real-sidebar > .brand { margin-bottom: 35px; }
 .real-property-selector { padding: 17px 12px; border: 1px solid #ffffff26; border-radius: 7px; background: #ffffff05; }
 .real-property-selector > label { display: block; font-size: 8px; letter-spacing: .12em; color: #b0c79e; margin-bottom: 10px; }
@@ -216,9 +217,30 @@
   .auth-card h1 { font-size: 30px; }
   .auth-bottom { max-width: 470px; padding-bottom: 10px; }
 }
+@media (min-width: 701px) and (max-height: 850px) {
+  .real-sidebar { padding-block: 18px 12px; }
+  .real-sidebar > .brand { margin-bottom: 18px; }
+  .real-sidebar-note { display: none; }
+  .real-app-nav { margin-top: 18px; gap: 4px; }
+  .real-sidebar > .real-profile { margin-top: auto; padding-block: 12px; }
+}
+@media (min-width: 701px) and (max-height: 650px) {
+  .real-sidebar { padding-block: 12px 8px; }
+  .real-sidebar > .brand { margin-bottom: 10px; }
+  .real-property-selector { padding-block: 8px; }
+  .real-property-selector > label { margin-bottom: 4px; }
+  .real-app-nav { margin-top: 10px; gap: 2px; }
+  .real-app-nav > a { min-height: 34px; padding-block: 7px; }
+  .real-sidebar > .real-profile { padding-block: 8px; }
+  .real-sidebar > .logout-action > button { min-height: 34px; padding-block: 7px; }
+}
+@media (min-width: 701px) and (max-height: 540px) {
+  .real-sidebar > .brand, .real-sidebar > .real-profile { display: none; }
+  .real-sidebar > .logout-action { margin-top: auto; }
+}
 @media (max-width: 700px) {
   .real-app { display: block; }
-  .real-sidebar { padding: 20px 18px 12px; }
+  .real-sidebar { position: static; height: auto; padding: 20px 18px 12px; }
   .real-sidebar > .brand { margin-bottom: 19px; }
   .real-property-selector { padding: 12px; }
   .real-property-selector > label { font-size: 8px; margin-bottom: 3px; }
