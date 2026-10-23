@@ -30,7 +30,7 @@ const normalize = (value: string) => value.trim().toLowerCase();
 const validPassword = (value: string) => value.length >= 8 && value.length <= 128 && /[a-zA-ZÀ-ÿ]/.test(value) && /[0-9]/.test(value);
 
 export async function buildApp({ test = false } = {}) {
-  const app = Fastify({ ajv: { customOptions: { removeAdditional: false } }, logger: test ? false : { level: "info", redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-csrf-token", "res.headers.set-cookie"] }, bodyLimit: 16384, trustProxy: false });
+  const app = Fastify({ ajv: { customOptions: { removeAdditional: false } }, logger: test ? false : { level: "info", redact: ["req.headers.cookie", "req.headers.authorization", "req.headers.x-csrf-token", "res.headers.set-cookie"] }, bodyLimit: 16384, trustProxy: process.env.API_TRUST_PROXY || false });
   await app.register(cookie);
   await app.register(rateLimit, { max: 180, timeWindow: "1 minute", keyGenerator: async request => {
     const token = request.cookies[sessionCookie];

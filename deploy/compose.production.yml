@@ -35,7 +35,11 @@ services:
       API_PORT: 4000
     depends_on:
       db: {condition: service_healthy}
-    networks: [database, application]
+    networks:
+      database:
+      application:
+      proxy:
+        aliases: [agromind-api]
     mem_limit: 1g
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
