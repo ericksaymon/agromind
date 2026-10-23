@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -42,6 +42,7 @@ type BatchList = {
 }[];
 export function ImportWorkspace({ property }: { property: PropertySummary }) {
   const base = `/api/properties/${property.id}`;
+  const fileInput = useRef<HTMLInputElement>(null);
   const [batch, setBatch] = useState<ImportView | null>(null),
     [batches, setBatches] = useState<BatchList>([]),
     [inventory, setInventory] = useState<InventoryView | null>(null),
@@ -311,21 +312,43 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                   </span>
                 </label>
               </fieldset>
-              <label className="import-file-input">
-                <Upload size={27} />
-                <strong>Selecione sua planilha</strong>
-                <span>
-                  CSV UTF-8 ou XLSX · até 1 MB, 1.000 registros e 32 colunas
-                </span>
+              <div className={`import-file-card${file ? " is-selected" : ""}`}>
                 <input
+                  ref={fileInput}
+                  id="import-spreadsheet-file"
+                  className="import-file-control"
                   aria-label="Arquivo da planilha"
                   type="file"
                   accept=".csv,.xlsx"
                   required
-                  disabled={!write}
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  disabled={!write || busy}
+                  onChange={(e) => {
+                    const next = e.target.files?.[0];
+                    if (next) { setFile(next); setError(""); }
+                  }}
                 />
-              </label>
+                {file ? <>
+                  <span className="import-file-icon" aria-hidden="true"><FileSpreadsheet size={27} /></span>
+                  <div className="import-file-copy" role="status">
+                    <span className="import-file-status"><Check size={13} aria-hidden="true" /> Arquivo selecionado</span>
+                    <strong>{file.name}</strong>
+                    <small>{file.name.split(".").pop()?.toUpperCase()} · {new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(file.size / 1000)} KB</small>
+                    <p>{file.size > 1000000 ? "O arquivo excede 1 MB. Escolha uma planilha menor." : "Pronto para leitura. Você confere os dados antes de importar."}</p>
+                  </div>
+                  <div className="import-file-actions">
+                    <label htmlFor="import-spreadsheet-file" aria-disabled={!write || busy}>Trocar arquivo</label>
+                    <button type="button" aria-label="Remover arquivo selecionado" disabled={!write || busy} onClick={() => {
+                      setFile(null); setError("");
+                      if (fileInput.current) { fileInput.current.value = ""; fileInput.current.focus(); }
+                    }}><X size={17} aria-hidden="true" /></button>
+                  </div>
+                </> : <label className="import-file-input" htmlFor="import-spreadsheet-file" aria-disabled={!write || busy}>
+                  <Upload size={27} aria-hidden="true" />
+                  <strong>Selecione sua planilha</strong>
+                  <span>CSV UTF-8 ou XLSX · até 1 MB, 1.000 registros e 32 colunas</span>
+                  <span className="import-file-choose">Escolher arquivo</span>
+                </label>}
+              </div>
               <p className="stock-help">
                 Use cabeçalhos na primeira linha. Fórmulas devem ser
                 substituídas por valores. Nenhum dado de estoque é gravado ao
@@ -334,7 +357,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
               <footer>
                 <button
                   className="button button-green"
-                  disabled={busy || !write || !file}
+                  disabled={busy || !write || !file || file.size > 1000000}
                 >
                   {busy ? (
                     <LoaderCircle size={16} className="spin" />

@@ -600,13 +600,33 @@
   font-size: 11px;
   line-height: 1.8;
 }
-.import-file-input {
-  padding: 27px 18px;
+.import-file-card {
+  position: relative;
   border: 1px dashed #92ac7f;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fafcf6;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+.import-file-card:has(.import-file-control:focus-visible) {
+  outline: 2px solid #315b37;
+  outline-offset: 4px;
+}
+.import-file-card .import-file-control {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.import-file-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 27px 18px;
   align-items: center;
   text-align: center;
+  cursor: pointer;
 }
 .import-file-input > svg {
   color: #65834d;
@@ -617,13 +637,105 @@
   color: #536b52;
   line-height: 1.8;
 }
-.import-file-input input {
-  font-size: 11px;
-  width: 100%;
+.import-file-input .import-file-choose {
+  margin-top: 7px;
+  padding: 8px 15px;
+  border: 1px solid #cdd9c2;
+  border-radius: 6px;
+  color: #103f31;
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+.import-file-card.is-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 21px;
+  border-style: solid;
+  border-color: #bbcfad;
+  background: #f3f7ee;
+}
+.import-file-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 54px;
+  flex-shrink: 0;
+  border: 1px solid #d7e2cc;
+  border-radius: 10px;
+  background: white;
+  color: #315b37;
+}
+.import-file-copy {
+  flex: 1 1 200px;
   min-width: 0;
-  padding: 10px 0;
+}
+.import-file-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #4f713e;
+  font-size: 10px;
+  font-weight: 600;
+}
+.import-file-copy strong {
+  display: block;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #103f31;
+}
+.import-file-copy small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #536b52;
+}
+.import-file-copy p {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #536b52;
+}
+.import-file-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+}
+.import-file-actions label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #315b37;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  padding: 8px 0;
+}
+.import-file-actions button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   border: 0;
-  background: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #536b52;
+  cursor: pointer;
+}
+.import-file-actions button:hover {
+  background: #e4ecdc;
+}
+.import-file-card label[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .import-file-card { transition: none; }
 }
 .import-guide {
   padding: 26px;
