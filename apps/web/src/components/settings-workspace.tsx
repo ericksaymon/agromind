@@ -541,8 +541,8 @@ export function SettingsWorkspace({
           <section className="settings-card">
             <h2>Convidar para {property.name}</h2>
             <p>
-              Os e-mails deste ambiente são capturados no Mailpit local. Aceite
-              do SMTP não comprova entrega na caixa de entrada.
+              O convite será enviado para o endereço informado. Acompanhe a
+              situação na lista abaixo; o envio não confirma o aceite do convite.
             </p>
             <form
               className="settings-form"

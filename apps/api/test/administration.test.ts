@@ -7,7 +7,7 @@ import { db } from "../src/db";
 import { digest, randomToken, sessionCookie } from "../src/security";
 import { settings } from "../src/config";
 import { decryptMail, processOutbox } from "../src/mail-outbox";
-import { locked, createProduct } from "../src/stock-service";
+import { locked, createProduct, dayInZone } from "../src/stock-service";
 const ids: string[] = [],
   properties: string[] = [],
   password = "Teste123";
@@ -1459,7 +1459,7 @@ test("categoria inédita fica pendente na importação; associação preserva or
       expiry: 5,
     },
     locale: "BR",
-    positionDate: new Date().toISOString().slice(0, 10),
+    positionDate: dayInZone(new Date(), p.timezone),
     edits: [],
   };
   const preview = await o.post(`${base}/imports/${id}/preview`, b);

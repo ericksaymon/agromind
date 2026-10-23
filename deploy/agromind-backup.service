@@ -1,0 +1,12 @@
+[Unit]
+Description=AgroMind PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/apps/AgroMind/current
+ExecStart=/bin/sh /home/ubuntu/apps/AgroMind/current/deploy/backup.sh
+UMask=0077
