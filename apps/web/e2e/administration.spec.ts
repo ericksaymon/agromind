@@ -385,6 +385,7 @@ test("formulário alterado permite cancelar navegação; resposta antiga de outr
   const original = await page.getByLabel("Nome da propriedade").inputValue();
   await page.getByLabel("Nome da propriedade").fill("Edição ainda não salva");
   page.once("dialog", (d) => d.dismiss());
+  await page.locator(".profile-menu > summary").click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(page.getByLabel("Nome da propriedade")).toHaveValue(
     "Edição ainda não salva",

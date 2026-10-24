@@ -3,6 +3,7 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/montserrat";
 import "./globals.css";
 import "./auth.css";
+import "./shell.css";
 import "./stock.css";
 import "./analysis.css";
 import "./intelligence.css";

@@ -247,7 +247,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
         </Link>
       </div>
       <ol className="import-progress" aria-label="Etapas da importação">
-        {["Enviar planilha", "Associar colunas", "Conferir e confirmar"].map(
+        {["Enviar planilha", "Associar colunas", "Conferir e importar"].map(
           (label, i) => (
             <li
               key={label}
@@ -272,16 +272,17 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
           <section className="stock-card import-upload">
             <div className="stock-card-heading">
               <div>
-                <h2>Escolha o ponto de partida</h2>
+                <h2>1. Escolha o tipo de planilha</h2>
                 <p>
-                  Produtos e movimentações ficam vinculados a {property.name}.
+                  Você não precisa enviar as duas. Comece pela posição de
+                  estoque e, se tiver o histórico, envie-o depois.
                 </p>
               </div>
             </div>
             <form className="stock-form" onSubmit={upload}>
               <fieldset className="import-mode-options">
-                <legend>O que a planilha representa?</legend>
-                <label>
+                <legend>Qual planilha você tem em mãos?</legend>
+                <label className={mode === "POSITION" ? "is-active" : ""}>
                   <input
                     type="radio"
                     name="import-mode"
@@ -289,14 +290,15 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                     onChange={() => setMode("POSITION")}
                   />
                   <span>
+                    <em>Para começar</em>
                     <strong>Posição de estoque</strong>
                     <small>
-                      Quantidades disponíveis em uma data. Gera abertura; não
-                      cria consumo passado.
+                      A lista do que você tem hoje: produto, quantidade e
+                      unidade. É a planilha mais simples e já preenche o painel.
                     </small>
                   </span>
                 </label>
-                <label>
+                <label className={mode === "HISTORY" ? "is-active" : ""}>
                   <input
                     type="radio"
                     name="import-mode"
@@ -304,10 +306,11 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                     onChange={() => setMode("HISTORY")}
                   />
                   <span>
+                    <em>Opcional</em>
                     <strong>Histórico de movimentações</strong>
                     <small>
-                      Aberturas, entradas, consumo e descarte, com data e tipo
-                      em cada registro.
+                      Entradas, consumo e descartes com data. Permite calcular o
+                      consumo médio e a autonomia de cada insumo.
                     </small>
                   </span>
                 </label>
@@ -373,28 +376,35 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
             <span className="import-guide-icon">
               <FileSpreadsheet size={28} />
             </span>
-            <h2>O que você pode trazer</h2>
-            <p>
-              Produto, categoria, quantidade, unidade, estoque mínimo e custo
-              por unidade.
-            </p>
-            <p>
-              Também aceitamos lote, validade, fornecedor, data, tipo de
-              movimento, destino, observações e identificador de origem.
-            </p>
+            <h2>Como funciona</h2>
+            <ol className="import-how">
+              <li>
+                <strong>Você envia</strong> um arquivo CSV ou XLSX.
+              </li>
+              <li>
+                <strong>A IA sugere</strong> a que coluna corresponde cada
+                dado. Só os títulos das colunas são lidos por ela.
+              </li>
+              <li>
+                <strong>Você confere</strong> cada linha. Nada entra no estoque
+                antes da sua confirmação.
+              </li>
+            </ol>
             <div className="import-guide-note">
-              Sem custo ou validade? Esses campos ficam como não informados.
-              Nenhum valor será inventado.
+              Os alertas e a autonomia são calculados por regras fixas sobre os
+              seus registros, sem IA. Dados que faltam, como custo ou validade,
+              ficam como não informados.
             </div>
+            <p className="import-guide-label">Sem planilha pronta? Baixe um modelo:</p>
             <a className="stock-secondary" href="/modelo-estoque.csv" download>
-              Baixar modelo de estoque <ArrowRight size={15} />
+              Modelo de posição de estoque <ArrowRight size={15} />
             </a>
             <a
               className="stock-secondary"
               href="/modelo-movimentacoes.csv"
               download
             >
-              Baixar modelo de histórico <ArrowRight size={15} />
+              Modelo de histórico <ArrowRight size={15} />
             </a>
           </aside>
         </div>
@@ -403,7 +413,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
         <section className="stock-card">
           <div className="stock-card-heading">
             <div>
-              <h2>Associe as colunas da planilha</h2>
+              <h2>2. Associe as colunas da planilha</h2>
               <p>
                 {batch.fileName} ·{" "}
                 {batch.mode === "POSITION"
@@ -479,10 +489,10 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
             <div className="import-ai-box">
               <Sparkles size={20} />
               <div>
-                <h3>Ajuda para entender as colunas</h3>
+                <h3>Sugestão automática das colunas</h3>
                 <p>
                   {batch.aiAvailable
-                    ? "A IA recebe somente os cabeçalhos, sugere associações e você confere. As linhas e quantidades não são enviadas."
+                    ? "A IA lê apenas os títulos das colunas (nunca as linhas ou quantidades) e sugere a associação. Você confere antes de seguir."
                     : "A análise por IA aguarda configuração do OpenRouter. Você pode continuar manualmente."}
                 </p>
                 {aiNote && (
@@ -499,30 +509,23 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                   void analyze();
                 }}
               >
-                Enviar cabeçalhos à IA
+                Sugerir com IA
               </button>
             </div>
-            <div className="import-mapping">
-              {fields.map((field) => (
-                <label key={field}>
+            {(() => {
+              const required: ImportField[] = ["product", "quantity", "unit", ...(batch.mode === "HISTORY" ? (["kind", "date"] as ImportField[]) : [])];
+              const field = (f: ImportField) => (
+                <label key={f}>
                   <span>
-                    {importFields[field]}
-                    {[
-                      "product",
-                      "quantity",
-                      "unit",
-                      ...(batch.mode === "HISTORY" ? ["kind", "date"] : []),
-                    ].includes(field) && <small> obrigatório</small>}
+                    {importFields[f]}
+                    {required.includes(f) && <small> obrigatório</small>}
                   </span>
                   <select
-                    value={mapping[field] ?? ""}
+                    value={mapping[f] ?? ""}
                     onChange={(e) => {
                       setMapping({
                         ...mapping,
-                        [field]:
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value),
+                        [f]: e.target.value === "" ? undefined : Number(e.target.value),
                       });
                       setEdits([]);
                       setDirty(true);
@@ -536,13 +539,26 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                     ))}
                   </select>
                   <small>
-                    {mapping[field] !== undefined
-                      ? `Ex.: ${batch.sheets[sheet]?.rows[0]?.[mapping[field]!] || "(vazio)"}`
+                    {mapping[f] !== undefined
+                      ? `Ex.: ${batch.sheets[sheet]?.rows[0]?.[mapping[f]!] || "(vazio)"}`
                       : "Você poderá corrigir os dados por registro na prévia."}
                   </small>
                 </label>
-              ))}
-            </div>
+              );
+              const optional = fields.filter((f) => !required.includes(f));
+              const filled = optional.filter((f) => mapping[f] !== undefined).length;
+              return (
+                <>
+                  <div className="import-mapping">{required.map(field)}</div>
+                  <details className="import-optional" open={filled > 0}>
+                    <summary>
+                      Campos opcionais ({filled} de {optional.length} associados)
+                    </summary>
+                    <div className="import-mapping">{optional.map(field)}</div>
+                  </details>
+                </>
+              );
+            })()}
             <p className="stock-help">
               Na posição de estoque, cada registro gera uma abertura de lote.
               Produtos que já têm histórico exigem movimentos ou ajuste
@@ -574,7 +590,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
         <section className="stock-card">
           <div className="stock-card-heading">
             <div>
-              <h2>Confira o que será importado</h2>
+              <h2>3. Confira o que será importado</h2>
               <p>
                 {rows.length} registros · {rows.length - invalid} sem erro de
                 campo · {invalid} com pendência
@@ -703,7 +719,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                         <span
                           className={`stock-badge ${row.duplicate ? "warn" : ""}`}
                         >
-                          {row.duplicate ? "Possível duplicidade" : "Conferir"}
+                          {row.duplicate ? "Possível duplicidade" : "Pronto"}
                         </span>
                       )}
                       {row.warnings.map((w) => (

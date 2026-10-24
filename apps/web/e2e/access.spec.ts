@@ -81,7 +81,7 @@ test("jornada completa de acesso, confirmação, configuração e recuperação"
   await page.goto("/continuar");
   await expect(page).toHaveURL(/\/app$/);
   await page.reload();
-  await expect(page.locator(".real-app-header")).toContainText("Sítio Sementes do Amanhã");
+  await expect(page.locator(".app-topbar")).toContainText("Sítio Sementes do Amanhã");
   await page.getByRole("link", { name: "Visão geral", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Visão geral", exact: true })).toBeVisible();
   await expect(page.locator(".real-app-content")).not.toContainText("Fazenda Boa Vista");

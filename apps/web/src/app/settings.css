@@ -152,11 +152,6 @@
   outline: 3px solid #bc780b;
   outline-offset: 3px;
 }
-.real-property-selector > a {
-  display: block;
-  margin-top: 10px;
-  font-size: 0.75rem;
-}
 @media (max-width: 650px) {
   .account-page {
     width: calc(100% - 24px);

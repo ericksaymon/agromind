@@ -1019,3 +1019,13 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Importação: escolha clara entre os dois tipos de planilha. */
+.import-mode-options > label > span > em { display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: 999px; background: #e4ecd6; color: #4a6b34; font-size: 10px; font-style: normal; font-weight: 600; letter-spacing: .04em; }
+.import-mode-options > label.is-active > span > em { background: #315b37; color: #fff; }
+.import-how { margin: 0 0 6px; padding-left: 18px; list-style: decimal; font-size: 12px; line-height: 1.8; color: #536b52; }
+.import-how li { margin-bottom: 8px; }
+.import-how strong { color: #2f5a34; }
+.import-guide .import-guide-label { margin: 0 0 4px; font-weight: 600; color: #2f5a34; }
+.import-optional { margin-top: 18px; border-top: 1px solid #dfe6d6; padding-top: 14px; }
+.import-optional > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #3e6330; margin-bottom: 18px; }

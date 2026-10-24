@@ -4,8 +4,10 @@ import { Brand } from "@/components/brand";
 import { DemoPanel } from "@/components/demo-panel";
 import { LandingMotion } from "@/components/landing-motion";
 import { faq } from "@/lib/demo-data";
+import { redirectSignedIn } from "@/lib/auth-server";
 
-export default function Home() {
+export default async function Home() {
+  await redirectSignedIn();
   return <>
     <LandingMotion />
     <a className="skip-link" href="#conteudo">Ir para o conteúdo</a>

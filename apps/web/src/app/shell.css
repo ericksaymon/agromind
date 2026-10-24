@@ -1,0 +1,64 @@
+/* Estrutura da área logada: navegação lateral, barra superior e menu da conta. */
+.real-app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100svh; background: #f5f6ee; }
+.app-sidebar { position: sticky; top: 0; align-self: start; height: 100dvh; padding: 26px 14px 20px; background: var(--deep); color: #cadbc0; display: flex; flex-direction: column; gap: 28px; min-width: 0; overflow-y: auto; }
+.app-sidebar > .brand { padding-inline: 10px; }
+.app-nav { display: flex; flex-direction: column; gap: 22px; }
+.app-nav-group { display: grid; gap: 3px; }
+.app-nav-group > p { margin: 0 0 6px; padding-inline: 12px; font-size: 10px; font-weight: 600; letter-spacing: .12em; color: #8fa97f; }
+.app-nav a { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 10px 12px; border-radius: 8px; color: #c3d6b8; font-size: 13.5px; transition: background .15s, color .15s; }
+.app-nav a > svg { flex-shrink: 0; opacity: .85; }
+.app-nav a:hover { background: #ffffff0d; color: #eef6e2; }
+.app-nav a[aria-current=page] { background: #ffffff17; color: #fff; font-weight: 600; box-shadow: inset 3px 0 #b9d589; }
+.app-nav a[aria-current=page] > svg { color: #b9d589; opacity: 1; }
+.app-nav a:focus-visible, .shell-property select:focus-visible, .profile-menu > summary:focus-visible { outline: 3px solid #f4b23e; outline-offset: 2px; }
+
+.real-app-main { min-width: 0; }
+.app-topbar { position: sticky; top: 0; z-index: 20; min-height: 68px; padding: 12px 40px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #f5f6eee8; backdrop-filter: blur(8px); border-bottom: 1px solid #dce4d2; }
+.shell-property { flex: 0 1 auto; position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 12px; border: 1px solid #d2ddc5; border-radius: 8px; background: #fff; color: #2f5a34; }
+.shell-property > svg { flex-shrink: 0; color: #5e7a48; }
+.shell-property > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.shell-property > select { min-height: 42px; width: 100%; max-width: min(340px, 48vw); border: 0; background: transparent; color: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-overflow: ellipsis; }
+.shell-property > p { position: absolute; top: calc(100% + 6px); left: 0; margin: 0; font-size: 12px; color: #a34d32; white-space: nowrap; }
+
+.profile-menu { position: relative; flex-shrink: 0; }
+.profile-menu > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px 4px 5px; border: 1px solid #d2ddc5; border-radius: 999px; background: #fff; color: #2f5a34; font-size: 13px; font-weight: 500; cursor: pointer; }
+.profile-menu > summary::-webkit-details-marker { display: none; }
+.profile-menu > summary:hover, .profile-menu[open] > summary { border-color: #a9c08f; background: #f9fbf4; }
+.profile-menu > summary > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #1d5a40; color: #fff; font-size: 11px; font-weight: 600; }
+.profile-menu > summary > span::before { content: attr(data-initials); }
+.profile-menu > summary > b { font-weight: 500; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-menu > summary > svg { color: #6e8a5b; transition: transform .15s; }
+.profile-menu[open] > summary > svg { transform: rotate(180deg); }
+.profile-menu-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 270px; padding: 8px; background: #fff; border: 1px solid #cddbbf; border-radius: 12px; box-shadow: 0 18px 45px #19351626; }
+.profile-menu-id { padding: 12px 12px 14px; border-bottom: 1px solid #e3ebd9; margin-bottom: 6px; }
+.profile-menu-id strong { display: block; font-size: 14px; color: #1f4a2c; font-weight: 600; overflow-wrap: anywhere; }
+.profile-menu-id small { display: block; margin-top: 3px; font-size: 12px; color: #637b53; overflow-wrap: anywhere; }
+.profile-menu-id em { display: inline-block; margin-top: 9px; padding: 3px 9px; border-radius: 999px; background: #e8f1d9; color: #3e6330; font-size: 11px; font-style: normal; font-weight: 600; }
+.profile-menu-panel a, .logout-action > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: #2d4d2a; font-size: 13.5px; text-align: left; cursor: pointer; }
+.profile-menu-panel a:hover, .logout-action > button:hover { background: #f0f5e8; }
+.logout-action { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e3ebd9; }
+.logout-action > button { color: #a34d32; }
+.logout-action > p { margin: 4px 12px 8px; font-size: 12px; color: #a34d32; }
+
+@media (max-width: 1100px) {
+  .real-app { grid-template-columns: 220px minmax(0, 1fr); }
+  .app-topbar { padding-inline: 25px; }
+}
+@media (min-width: 701px) and (max-height: 700px) {
+  .app-sidebar { gap: 16px; padding-block: 16px 12px; }
+  .app-nav { gap: 12px; }
+  .app-nav a { min-height: 36px; padding-block: 6px; }
+}
+@media (max-width: 700px) {
+  .real-app { display: block; }
+  .app-sidebar { position: static; height: auto; padding: 14px 14px 8px; gap: 10px; overflow: visible; }
+  .app-nav { flex-direction: row; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .app-nav-group { display: contents; }
+  .app-nav-group > p { display: none; }
+  .app-nav a { flex-shrink: 0; gap: 7px; min-height: 42px; padding: 9px 12px; font-size: 12.5px; }
+  .app-nav a[aria-current=page] { box-shadow: inset 0 -3px #b9d589; }
+  .app-topbar { position: static; padding: 10px 14px; min-height: 62px; }
+  .shell-property > select { max-width: 52vw; font-size: 13px; }
+  .profile-menu > summary > b { display: none; }
+  .profile-menu > summary { padding-right: 8px; }
+}
