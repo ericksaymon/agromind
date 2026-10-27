@@ -47,6 +47,14 @@ model WhatsappPairCode {
   @@index([expiresAt])
 }
 
+model WhatsappPairAttempt {
+  eventKey String @id @db.VarChar(64)
+  phoneHash String @db.Char(64)
+  createdAt DateTime @default(now())
+  @@index([phoneHash, createdAt])
+  @@index([createdAt])
+}
+
 model WhatsappReply {
   id String @id @default(uuid()) @db.Uuid
   eventKey String @unique @db.VarChar(64)

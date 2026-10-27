@@ -6,6 +6,7 @@ import { digest, sessionCookie } from "../../api/src/security";
 import { processWhatsappEvent } from "../../api/src/whatsapp-service";
 const userIds: string[] = [], propertyIds: string[] = [], keys: string[] = [];
 test.afterAll(async () => {
+  await db.whatsappPairAttempt.deleteMany({ where: { eventKey: { in: keys } } });
   await db.whatsappReply.deleteMany({ where: { eventKey: { in: keys } } });
   await db.whatsappInboxEvent.deleteMany({ where: { eventKey: { in: keys } } });
   await db.property.deleteMany({ where: { id: { in: propertyIds } } });
@@ -21,7 +22,8 @@ test("WhatsApp: gerar código, confirmar vínculo, trocar propriedade e desconec
   await page.goto("/app/assistant");
   await expect(page.getByRole("heading", { name: "Assistente no WhatsApp" })).toBeVisible();
   await page.getByRole("button", { name: "Conectar WhatsApp", exact: true }).click();
-  await expect(page.locator(".whatsapp-code code")).toHaveText(/^AGROMIND [a-f0-9]{32}$/);
+  await expect(page.locator(".whatsapp-code code")).toHaveText(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+  await page.screenshot({ path: "../../tmp/whatsapp-short-code.png", fullPage: true });
   const incoming = async () => {
     const text = await page.locator(".whatsapp-code code").innerText();
     const id = randomUUID();
@@ -47,4 +49,12 @@ test("WhatsApp: gerar código, confirmar vínculo, trocar propriedade e desconec
   await page.getByRole("button", { name: "Desconectar WhatsApp", exact: true }).click();
   await expect(page.getByText("Conecte seu telefone", { exact: true })).toBeVisible();
   expect(await db.whatsappConnection.count({ where: { userId: user.id } })).toBe(0);
+  await page.route("**/api/account/whatsapp", async route => {
+    const upstream = await route.fetch();
+    const data = await upstream.json();
+    await route.fulfill({ response: upstream, json: { ...data, pairingAvailable: false } });
+  });
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Abra o Assistente no site publicado para conectar seu telefone." })).toHaveAttribute("href", "https://agromind.ericksaymon.dev/app/assistant");
+  await expect(page.getByRole("button", { name: "Conectar WhatsApp", exact: true })).toBeDisabled();
 });

@@ -9,12 +9,13 @@ import { encryptWhatsapp, decryptWhatsapp } from "../src/whatsapp-crypto";
 import { processWhatsappEvent, sendWhatsappReply, metaSend } from "../src/whatsapp-service";
 import { processAnalysis } from "../src/analysis-service";
 const prefix = `assistant-${Date.now()}`, users: string[] = [], properties: string[] = [], events: string[] = [];
-const envNames = ["WHATSAPP_INBOX_KEY", "WHATSAPP_PUBLIC_NUMBER", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_GRAPH_VERSION"];
+const envNames = ["WHATSAPP_INBOX_KEY", "WHATSAPP_PUBLIC_NUMBER", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_GRAPH_VERSION", "WHATSAPP_ALLOW_LOCAL_PAIRING"];
 const previous = envNames.map(k => process.env[k]);
 let app: Awaited<ReturnType<typeof buildApp>>;
-before(async () => { process.env.WHATSAPP_INBOX_KEY = randomBytes(32).toString("hex"); process.env.WHATSAPP_PUBLIC_NUMBER = "556900000000"; app = await buildApp({ test: true }); });
+before(async () => { process.env.WHATSAPP_ALLOW_LOCAL_PAIRING = "true"; process.env.WHATSAPP_INBOX_KEY = randomBytes(32).toString("hex"); process.env.WHATSAPP_PUBLIC_NUMBER = "556900000000"; app = await buildApp({ test: true }); });
 after(async () => {
   await app.close();
+  await db.whatsappPairAttempt.deleteMany({ where: { eventKey: { in: events } } });
   await db.whatsappReply.deleteMany({ where: { eventKey: { in: events } } });
   await db.whatsappInboxEvent.deleteMany({ where: { eventKey: { in: events } } });
   await db.property.deleteMany({ where: { id: { in: properties } } });
@@ -49,7 +50,7 @@ test("assistente: código com hash, geração invalida anterior, escopo e CSRF",
   const a = await fixture(), b = await fixture();
   const first = await a.code(), second = await a.code();
   assert.notEqual(first, second);
-  const old = await db.whatsappPairCode.findUniqueOrThrow({ where: { hash: digest(first.split(" ")[1]) } }); assert.ok(old.usedAt);
+  const old = await db.whatsappPairCode.findUniqueOrThrow({ where: { hash: digest(first.split(" ")[1].toLowerCase()) } }); assert.ok(old.usedAt);
   assert.equal((await a.post("/api/account/whatsapp/code", { propertyId: b.p.id })).statusCode, 404);
   assert.equal((await app.inject({ method: "POST", url: "/api/account/whatsapp/code", payload: { propertyId: a.p.id } })).statusCode, 403);
   assert.equal((await app.inject({ url: "/api/account/whatsapp" })).statusCode, 401);
@@ -66,12 +67,12 @@ test("assistente: VIEWER vincula com código único, concorrência e replay não
 test("assistente: código expirado, sessão revogada e telefone de outro titular são recusados", async () => {
   const a = await fixture(), b = await fixture();
   const code = await a.code();
-  await db.whatsappPairCode.update({ where: { hash: digest(code.split(" ")[1]) }, data: { expiresAt: new Date(0) } });
+  await db.whatsappPairCode.update({ where: { hash: digest(code.split(" ")[1].toLowerCase()) }, data: { expiresAt: new Date(0) } });
   assert.match(response(await receive(a.phone, code)), /inválido|indisponível/);
   await receive(a.phone, await a.code());
   assert.match(response(await receive(a.phone, await b.code())), /inválido|indisponível/);
   const valid = await b.code(); await db.session.delete({ where: { id: b.session.id } });
-  assert.match(response(await receive(b.phone, valid)), /inválido|expirado/);
+  assert.match(response(await receive(b.phone, valid)), /inválido|expirado|Não encontrei/);
   assert.equal(await db.whatsappConnection.count({ where: { userId: b.user.id } }), 0);
 });
 test("assistente: saldo real, isolamento, validade, ambiguidade e ausência de histórico", async () => {
@@ -143,4 +144,32 @@ test("assistente: adaptador envia texto com janela do provedor e classifica reje
     globalThis.fetch = (async () => new Response("{}", { status: 401 })) as typeof fetch;
     await assert.rejects(metaSend("556900000055", "Teste"), e => (e as { definite: boolean }).definite);
   } finally { globalThis.fetch = fetchOriginal; if (oldPhone === undefined) delete process.env.WHATSAPP_PHONE_NUMBER_ID; else process.env.WHATSAPP_PHONE_NUMBER_ID = oldPhone; }
+});
+
+test("assistente: localhost não gera código para o bot publicado e informa o destino correto", async () => {
+  const a = await fixture();
+  delete process.env.WHATSAPP_ALLOW_LOCAL_PAIRING;
+  try {
+    const state = await app.inject({ url: "/api/account/whatsapp", headers: a.headers });
+    assert.equal(state.json().pairingAvailable, false);
+    assert.equal(state.json().pairingUrl, "https://agromind.ericksaymon.dev/app/assistant");
+    const denied = await a.post("/api/account/whatsapp/code", { propertyId: a.p.id });
+    assert.equal(denied.statusCode, 409); assert.equal(denied.json().code, "WHATSAPP_ENVIRONMENT_MISMATCH");
+    assert.equal(await db.whatsappPairCode.count({ where: { sessionId: a.session.id } }), 0);
+  } finally { process.env.WHATSAPP_ALLOW_LOCAL_PAIRING = "true"; }
+});
+
+test("assistente: código curto aceita hífen e minúsculas; tentativas limitadas mesmo com código correto", async () => {
+  const a = await fixture();
+  const code = await a.code();
+  assert.match(code, /^AGROMIND [A-HJ-NP-Z2-9]{8}$/);
+  const raw = code.split(" ")[1];
+  assert.match(response(await receive(a.phone, `${raw.slice(0, 4)}-${raw.slice(4)}`.toLowerCase())), /conectado/);
+  const b = await fixture(); const valid = await b.code();
+  for (let i = 0; i < 5; i++) assert.match(response(await receive(b.phone, "AGROMIND ZZZZ-ZZZZ")), /Não encontrei.*publicado/);
+  assert.match(response(await receive(b.phone, valid)), /Muitas tentativas/);
+  assert.equal(await db.whatsappConnection.count({ where: { userId: b.user.id } }), 0);
+  const { phoneHash } = await import("../src/whatsapp-crypto");
+  await db.whatsappPairAttempt.updateMany({ where: { phoneHash: phoneHash(b.phone) }, data: { createdAt: new Date(Date.now() - 660_000) } });
+  assert.match(response(await receive(b.phone, valid)), /conectado/);
 });

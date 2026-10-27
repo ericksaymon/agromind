@@ -4,6 +4,7 @@ import { audit, userLocks } from "./administration-service";
 import { decryptWhatsapp, encryptWhatsapp, phoneHash } from "./whatsapp-crypto";
 import type { Tx } from "./stock-service";
 import { whatsappAnswer, whatsappHelp } from "./whatsapp-query";
+import { parseWhatsappPairCode } from "./whatsapp-pairing";
 type Incoming = { id?: string; from?: string; timestamp?: string; type?: string; text?: { body?: string }; status?: string };
 type Envelope = { to: string; text: string };
 
@@ -43,12 +44,19 @@ export async function processWhatsappEvent(eventKey?: string) {
       const hash = phoneHash(item.from);
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${hash},0))::text`;
       const text = typeof item.text?.body === "string" ? item.text.body.trim() : "";
-      const code = /^AGROMIND\s+([a-f0-9]{32})$/i.exec(text);
+      const code = parseWhatsappPairCode(text);
       let connection = null as Awaited<ReturnType<typeof liveConnection>>;
       let response: string;
       if (code) {
-        const pairing = await tx.whatsappPairCode.findUnique({ where: { hash: digest(code[1].toLowerCase()) }, include: { session: { include: { user: true } } } });
-        if (!pairing) response = "Código inválido ou expirado. Gere outro em Assistente, dentro do painel AgroMind.";
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('whatsapp-code-attempts',0))::text`;
+        const window = new Date(now - 600_000);
+        const tries = await tx.whatsappPairAttempt.count({ where: { phoneHash: hash, createdAt: { gt: window } } });
+        const total = await tx.whatsappPairAttempt.count({ where: { createdAt: { gt: window } } });
+        const limited = tries >= 5 || total >= 1000;
+        if (!limited) await tx.whatsappPairAttempt.create({ data: { eventKey: event.eventKey, phoneHash: hash } });
+        const pairing = limited ? null : await tx.whatsappPairCode.findUnique({ where: { hash: digest(code) }, include: { session: { include: { user: true } } } });
+        if (limited) response = "Muitas tentativas de conexão. Aguarde dez minutos e gere um novo código no painel publicado: https://agromind.ericksaymon.dev/app/assistant";
+        else if (!pairing) response = "Não encontrei esse código no AgroMind publicado. Abra https://agromind.ericksaymon.dev/app/assistant e gere outro. Códigos gerados no localhost não funcionam nesta conversa.";
         else {
           await userLocks(tx, [pairing.session.userId]);
           await tx.$queryRaw`SELECT id FROM "Property" WHERE id=${pairing.propertyId}::uuid FOR SHARE`;
@@ -128,6 +136,7 @@ export function startWhatsappWorker(log: { error: (details: object, message: str
       for (let n = 0; n < 10; n++) if (!await sendWhatsappReply()) break;
       await db.whatsappReply.updateMany({ where: { status: "SENDING", updatedAt: { lt: new Date(Date.now() - 60_000) } }, data: { status: "UNKNOWN", errorCode: "INTERRUPTED_SEND" } });
       await db.whatsappReply.updateMany({ where: { encrypted: { not: "" }, createdAt: { lt: new Date(Date.now() - 7 * 86_400_000) } }, data: { encrypted: "" } });
+      await db.whatsappPairAttempt.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 86400000) } } });
     })().catch(() => log.error({ code: "WHATSAPP_WORKER_FAILED" }, "Falha no ciclo WhatsApp; nova tentativa automática.")).finally(() => { running = null; });
   };
   const timer = setInterval(run, 2000); timer.unref(); run();
