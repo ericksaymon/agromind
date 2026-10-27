@@ -62,7 +62,7 @@ Simulação é somente leitura, inclusive para VIEWER: considera vencimentos e c
 
 Relatórios aceitam até 365 dias completos, com paginação de produtos/eventos. Bases acima de 50.000 movimentos exigem ampliar o processamento desta versão; não são truncadas silenciosamente. Hipóteses e limiares não são regras agronômicas garantidas, e não há ajuste sazonal automático.
 
-Piloto publicado na Oracle em https://agromind.ericksaymon.dev. WhatsApp (etapa 6) permanece adiado por decisão do usuário.
+Piloto publicado na Oracle em https://agromind.ericksaymon.dev. Etapa 6 retomada: receptor autenticado do WhatsApp publicado; conexão dos eventos na Meta e validação de recebimento real ainda pendentes. Consultas e respostas automáticas ainda não implementadas.
 
 Refinamentos das etapas 1 a 5: prévia de importação com conciliação dos registros selecionados, referência externa opcional de conferência, qualidade dos dados no produto, explicações expansíveis e atalho de alerta para planejamento com o produto selecionado. A referência externa da prévia é apenas local à tela; não ajusta saldos nem é persistida.
 

@@ -5,6 +5,19 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Encrypted inbox for stage 6. No inventory actions are executed by the receiver.
+model WhatsappInboxEvent {
+  eventKey String @id @db.VarChar(64)
+  accountId String @db.VarChar(40)
+  phoneNumberId String @db.VarChar(40)
+  kind String @db.VarChar(16)
+  encrypted String @db.Text
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  @@index([receivedAt])
+  @@index([processedAt, receivedAt])
+}
 enum Role {
   ADMIN
   OPERATOR

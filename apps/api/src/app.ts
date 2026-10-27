@@ -15,6 +15,7 @@ import type { FastifyRequest } from "fastify";
 import { registerStockRoutes } from "./stock-routes";
 import { registerAnalysisRoutes } from "./analysis-routes";
 import { registerIntelligenceRoutes } from "./intelligence-routes";
+import { registerWhatsappRoutes, WHATSAPP_WEBHOOK_PATH } from "./whatsapp-routes";
 
 const email = Type.String({ format: "email", maxLength: 254 });
 const password = Type.String({ minLength: 8, maxLength: 128 });
@@ -42,7 +43,8 @@ export async function buildApp({ test = false } = {}) {
   } });
   app.addHook("onRequest", async (request, reply) => {
     reply.header("Cache-Control", "no-store").header("X-Content-Type-Options", "nosniff").header("Referrer-Policy", "no-referrer");
-    validateMutation(request);
+    // This exact machine-to-machine endpoint authenticates the original bytes with Meta's HMAC.
+    if (!(request.method === "POST" && request.routeOptions.url === WHATSAPP_WEBHOOK_PATH)) validateMutation(request);
   });
   app.addHook("preValidation", async request => {
     const body = request.body as { email?: unknown } | null;
@@ -162,6 +164,7 @@ export async function buildApp({ test = false } = {}) {
   await registerStockRoutes(app);
   await registerAnalysisRoutes(app);
   await registerIntelligenceRoutes(app);
+  await registerWhatsappRoutes(app);
   return app;
 }
 
