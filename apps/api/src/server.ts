@@ -3,10 +3,12 @@ import { settings } from "./config";
 import { db } from "./db";
 import { startAnalysisWorker } from "./analysis-service";
 import { startMailWorker } from "./mail-outbox";
+import { startWhatsappWorker } from "./whatsapp-service";
 const app = await buildApp();
 await app.listen({ port: settings.port, host: process.env.API_HOST || "127.0.0.1" });
 const stopWorker = startAnalysisWorker(app.log);
 const stopMail = startMailWorker();
+const stopWhatsapp = startWhatsappWorker(app.log);
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, async () => { await app.close(); await stopWorker(); await stopMail(); await db.$disconnect(); process.exit(0); });
+  process.on(signal, async () => { await app.close(); await stopWorker(); await stopMail(); await stopWhatsapp(); await db.$disconnect(); process.exit(0); });
 }

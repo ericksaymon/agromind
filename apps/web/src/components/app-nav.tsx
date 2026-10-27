@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, FileSpreadsheet, LayoutDashboard, Package, ArrowLeftRight, BellRing, ChartNoAxesCombined } from "lucide-react";
+import { Settings, FileSpreadsheet, LayoutDashboard, Package, ArrowLeftRight, BellRing, ChartNoAxesCombined, MessageCircle } from "lucide-react";
 const groups = [
   { label: "", items: [{ href: "/app", label: "Visão geral", icon: LayoutDashboard }] },
   { label: "ANÁLISE", items: [{ href: "/app/inteligencia", label: "Inteligência", icon: ChartNoAxesCombined }, { href: "/app/alertas", label: "Alertas e decisões", icon: BellRing }] },
   { label: "ESTOQUE", items: [{ href: "/app/estoque", label: "Meus insumos", icon: Package }, { href: "/app/movimentacoes", label: "Movimentações", icon: ArrowLeftRight }, { href: "/app/importar", label: "Importar planilha", icon: FileSpreadsheet }] },
-  { label: "PROPRIEDADE", items: [{ href: "/app/configuracoes", label: "Configurações", icon: Settings }] },
+  { label: "PROPRIEDADE", items: [{ href: "/app/assistant", label: "Assistente", icon: MessageCircle }, { href: "/app/configuracoes", label: "Configurações", icon: Settings }] },
 ];
 export function AppNav() {
   const pathname = usePathname();

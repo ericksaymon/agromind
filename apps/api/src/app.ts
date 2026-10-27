@@ -16,6 +16,7 @@ import { registerStockRoutes } from "./stock-routes";
 import { registerAnalysisRoutes } from "./analysis-routes";
 import { registerIntelligenceRoutes } from "./intelligence-routes";
 import { registerWhatsappRoutes, WHATSAPP_WEBHOOK_PATH } from "./whatsapp-routes";
+import { registerWhatsappAccount } from "./whatsapp-account";
 
 const email = Type.String({ format: "email", maxLength: 254 });
 const password = Type.String({ minLength: 8, maxLength: 128 });
@@ -165,6 +166,7 @@ export async function buildApp({ test = false } = {}) {
   await registerAnalysisRoutes(app);
   await registerIntelligenceRoutes(app);
   await registerWhatsappRoutes(app);
+  await registerWhatsappAccount(app);
   return app;
 }
 

@@ -73,7 +73,8 @@ export async function registerWhatsappRoutes(app: FastifyInstance) {
       }
       // One transaction, unique event keys and acknowledgement only after commit.
       const stored = await db.$transaction(async tx => {
-        await tx.whatsappInboxEvent.deleteMany({ where: { receivedAt: { lt: new Date(Date.now() - 7 * 86_400_000) } } });
+        // Keep deduplication tombstones, clear only processed content after retention.
+        await tx.whatsappInboxEvent.updateMany({ where: { processedAt: { not: null }, encrypted: { not: "" }, receivedAt: { lt: new Date(Date.now() - 7 * 86_400_000) } }, data: { encrypted: "" } });
         return events.length ? tx.whatsappInboxEvent.createMany({ data: events, skipDuplicates: true }) : { count: 0 };
       });
       app.log.info({ received: events.length, stored: stored.count }, "WHATSAPP_WEBHOOK_RECEIVED");

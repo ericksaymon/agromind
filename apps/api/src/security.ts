@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type {} from "@fastify/cookie";
 import { settings } from "./config";
 import { db } from "./db";
 
