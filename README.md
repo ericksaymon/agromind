@@ -6,10 +6,10 @@ Aplicação de gestão de insumos rurais. Monorepo com frontend Next.js/React, A
 
 **Commitou, Brotou — AgroMind**
 
-- Arthur Basseto Trevizan
-- Erick Saymon Contadini Markoviscz
-- Filipe Ribeiro Camargo
-- Tana de Souza Rocha
+- **Arthur Basseto Trevizan** — Apresentador
+- **Erick Saymon Contadini Markoviscz** — Desenvolvedor
+- **Filipe Ribeiro Camargo** — Tech lead
+- **Tana de Souza Rocha** — Testadora
 
 ## Uso de inteligência artificial
 
