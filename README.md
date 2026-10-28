@@ -151,6 +151,8 @@ Testes de navegador precisam de web/API e Mailpit ativos. Execute testes de API 
 
 ## Estrutura e operação
 
+Consulte o [índice da documentação](documentation/README.md) para arquitetura, dados e regras, validação e guia de avaliação funcional.
+
 - `apps/web`: interface, demonstração e testes de navegador.
 - `apps/api`: API, regras, workers, migrations e testes.
 - `packages/contracts`: contratos compartilhados.
