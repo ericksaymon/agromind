@@ -161,10 +161,8 @@ Consulte o [índice da documentação](documentation/README.md) para arquitetura
 
 Credenciais, bancos, dados pessoais reais, planejamento e builds ficam fora do Git. Não publique o `.env` nem o diretório `.private`. Backups externos automáticos e sua política de retenção continuam como melhoria operacional pendente.
 
-## Vídeo, apresentação e versão de entrega
+## Vídeo e versão de entrega
 
-**Vídeo: pendente de planejamento e produção, por decisão da equipe.** Formato escolhido: até 90 segundos, horizontal, com legendas em português e sem narração. Será a última etapa; o vídeo e os materiais da apresentação serão vinculados aqui após revisão.
+**[Assistir ao vídeo](documentation/video/agromind-final.mp4)** — 40 segundos, 1920 × 1080, horizontal, legendas em português, sem narração. Os 30 segundos centrais mostram a demonstração pública `/demo` com dados simulados: consulta a um Diesel S10, simulação de retirada de 150 litros, saldo atualizado para 270 litros e autonomia de 4,5 dias. Detalhes de gravação, trilha e limitações da captura em [documentation/video/production/REVIEW.md](documentation/video/production/REVIEW.md).
 
-O roteiro precisa mostrar o problema, exemplos identificados como simulados, critérios dos alertas e uma atualização de estoque seguida de reanálise. Não apresentar a demo visual como conta operacional nem recursos planejados como concluídos.
-
-A base funcional verificada corresponde ao commit [`1d487b0`](https://github.com/ericksaymon/agromind/commit/1d487b0), com a correção do código curto. A documentação foi atualizada posteriormente. **O commit ou tag final da entrega será registrado após o fechamento dos materiais**, sem confundir alterações locais ainda não publicadas com a versão avaliada.
+A apresentação ao vivo segue preparada pela equipe. A base funcional verificada corresponde ao commit [`1d487b0`](https://github.com/ericksaymon/agromind/commit/1d487b0), com a correção do código curto. A documentação foi atualizada posteriormente. **O commit ou tag final da entrega será registrado após o fechamento dos materiais**, sem confundir alterações locais ainda não publicadas com a versão avaliada.
