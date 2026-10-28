@@ -35,7 +35,7 @@ O CSV de histórico contém poucos registros e não substitui a fixture com cobe
 3. Conferir no painel a propriedade vinculada.
 4. Perguntar pelo saldo de um produto dessa propriedade e comparar com o painel.
 
-O bot publicado não lê propriedades locais. A versão atual consulta por texto; pedidos de retirada não gravam movimentos. Se o vínculo pessoal ainda não tiver sido testado, não depender dele como único caminho da apresentação.
+O bot publicado não lê propriedades locais. A versão atual consulta por texto; pedidos de retirada não gravam movimentos. Até que um integrante teste o vínculo do próprio telefone e uma consulta completa à propriedade, mantenha também o painel como caminho de demonstração.
 
 ## Checklist de encerramento
 

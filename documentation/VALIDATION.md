@@ -66,7 +66,8 @@ node deploy/smoke.mjs https://agromind.ericksaymon.dev
 ## O que não foi comprovado
 
 - Precisão geral com dados de produtores, adoção em campo ou benefício econômico medido.
-- Conclusão do vínculo pessoal real da equipe e do roteiro definitivo de avaliação.
+- Jornada completa de um integrante vinculando o próprio WhatsApp e consultando os dados da propriedade; a entrega de uma resposta automática já foi confirmada.
+- Roteiro definitivo de avaliação e apresentação, ainda a preparar.
 - Entrega de todos os e-mails ou mensagens futuras; aceite do provedor e entrega são estados distintos.
 - Operação definitiva do app Meta fora do modo de desenvolvimento.
 - Áudio, memória conversacional, interpretação por LLM e retiradas confirmadas no WhatsApp: ainda não implementados.

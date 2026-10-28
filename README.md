@@ -94,7 +94,7 @@ Na última alteração funcional, em 27/10/2026:
 
 Há também testes de navegador das jornadas de acesso, estoque, administração e inteligência. A lista acima não afirma que toda a suíte de navegador foi reexecutada na última alteração.
 
-As verificações usam dados sintéticos e não equivalem a validação de campo com produtores. O vínculo pessoal real da equipe e o roteiro final da apresentação ainda precisam ser conferidos pela equipe.
+Os testes usaram dados criados para simular uma propriedade rural. Eles verificam o funcionamento do sistema, mas ainda não demonstram que a solução foi avaliada com produtores em uma propriedade real. O recebimento e a entrega de mensagens pelo WhatsApp foram testados; ainda não há registro de uma consulta completa feita por um integrante após vincular seu próprio telefone. O roteiro da apresentação será preparado pela equipe.
 
 ## Tecnologias e uso de inteligência artificial
 
