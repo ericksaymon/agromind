@@ -108,7 +108,7 @@ No produto, o **OpenRouter** roteia a solicitação ao modelo configurado para s
 
 O AgroMind é apresentado pela equipe **Commitou, Brotou**. A identidade visual veio do material do projeto fornecido pela equipe. As fontes Inter e Montserrat e as bibliotecas possuem seus próprios créditos e condições de uso, registrados em [Créditos e dependências](THIRD_PARTY_NOTICES.md).
 
-Esta entrega tem finalidade acadêmica e demonstrativa. **Uma licença aberta específica para o código da equipe ainda não foi definida.** A definição das condições de uso do código é uma pendência de fechamento; nenhuma licença foi adicionada em nome dos integrantes sem essa decisão.
+Esta entrega tem finalidade acadêmica e demonstrativa. O código desenvolvido para o AgroMind está disponível sob a [licença MIT](LICENSE), por decisão da equipe. As dependências e outros recursos de terceiros mantêm suas próprias condições de uso, detalhadas em [Créditos e dependências](THIRD_PARTY_NOTICES.md).
 
 Referências do evento: [página do AGROHACK](https://incubadora.cloud/agrohack/) e [regulamento oficial](https://incubadora.cloud/agrohack/assets/regulamento-agrohack.pdf).
 

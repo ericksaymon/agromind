@@ -41,7 +41,7 @@ O bot publicado não lê propriedades locais. A versão atual consulta por texto
 
 - Conferir equipe, cursos, funções e responsável no [README](../README.md).
 - Conferir critérios, dados simulados e limitações nos [documentos de regras](DATA_AND_RULES.md) e [validação](VALIDATION.md).
-- Definir as condições de uso do código da equipe.
+- Conferir a [licença MIT](../LICENSE) do código e os créditos dos recursos de terceiros.
 - Planejar e produzir o vídeo de até 90 segundos com legendas, somente na última etapa; incluir o link e os materiais no README.
 - Registrar o commit ou tag final que será avaliado e conferir o acesso do GitHub cadastrado em Minha equipe.
 - Não incluir credenciais, dados pessoais de terceiros, arquivos privados ou recursos ainda planejados como se estivessem entregues.

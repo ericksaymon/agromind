@@ -12,4 +12,4 @@ Material de avaliação e referência da implementação disponível em 27/10/20
 | [Créditos](../THIRD_PARTY_NOTICES.md) | Marca, fontes, dependências e licenças declaradas nos pacotes. |
 | [Operação do piloto](../deploy/OPERATIONS.md) | Publicação, backups, saúde e retorno de versão. |
 
-O vídeo e os materiais da apresentação ainda serão planejados e produzidos, como última etapa definida pela equipe. A licença específica do código e a identificação final da versão também aguardam fechamento. A existência desta documentação não representa entrega desses itens.
+O vídeo e os materiais da apresentação ainda serão planejados e produzidos, como última etapa definida pela equipe. A identificação final da versão também aguarda fechamento. O código está sob a [licença MIT](../LICENSE). A existência desta documentação não representa entrega do vídeo ou da apresentação.

@@ -23,4 +23,4 @@ A marca AgroMind veio do material do projeto fornecido pela equipe. O símbolo e
 
 ## Código do projeto
 
-Código específico apresentado pela equipe Commitou, Brotou, com apoio das ferramentas de IA declaradas no README. As dependências mantêm suas próprias condições de uso. Uma licença aberta específica para o código da equipe ainda não foi escolhida.
+Código específico apresentado pela equipe Commitou, Brotou, com apoio das ferramentas de IA declaradas no README, sob a [licença MIT](LICENSE). As dependências mantêm suas próprias condições de uso.
