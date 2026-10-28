@@ -27,6 +27,17 @@ tmp/
 *.sqlite
 *.sqlite3
 
+# Intermediários e logs de produção do vídeo
+documentation/video/agromind-demo.mp4
+documentation/video/*.png
+documentation/video/agromind-demo-painel.jpg
+documentation/video/production/.hyperframes/
+documentation/video/production/*.log
+documentation/video/production/assets/music.wav
+
+# Diretório de trabalho de agentes
+.claude/
+
 # Dependências e builds futuros
 node_modules/
 .next/

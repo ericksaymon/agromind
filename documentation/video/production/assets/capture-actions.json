@@ -1,0 +1,18 @@
+[
+  {
+    "time": 4,
+    "action": "Quanto diesel ainda temos?"
+  },
+  {
+    "time": 9,
+    "action": "Simular retirada"
+  },
+  {
+    "time": 14,
+    "action": "Revisar retirada"
+  },
+  {
+    "time": 18,
+    "action": "Confirmar simulação"
+  }
+]
