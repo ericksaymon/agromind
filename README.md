@@ -2,6 +2,23 @@
 
 Aplicação de gestão de insumos rurais. Monorepo com frontend Next.js/React, API Fastify/TypeScript e PostgreSQL/Prisma.
 
+## Equipe
+
+**Commitou, Brotou — AgroMind**
+
+- Arthur Basseto Trevizan
+- Erick Saymon Contadini Markoviscz
+- Filipe Ribeiro Camargo
+- Tana de Souza Rocha
+
+## Uso de inteligência artificial
+
+A equipe utilizou **Codex, da OpenAI, e Claude, da Anthropic, como apoio ao desenvolvimento**. As revisões informadas pela equipe abrangeram funcionamento e validade dos resultados. O repositório contém testes automatizados e registra limitações; os testes sintéticos não comprovam validação de campo com produtores.
+
+No produto, o **OpenRouter encaminha a solicitação ao modelo configurado para sugerir a associação das colunas na importação**. Essa ação é iniciada pelo usuário e envia somente os cabeçalhos, conforme o adaptador implementado. A revisão humana e a validação no backend precedem a gravação. Saldos, alertas e estimativas são calculados pelo código do aplicativo. A versão atual do assistente WhatsApp usa comandos e palavras-chave, sem LLM conversacional.
+
+As tecnologias e dependências utilizadas estão descritas neste README e nos arquivos `package.json` e `pnpm-lock.yaml`. As respectivas referências e condições de uso deverão acompanhar a versão final da entrega.
+
 ## Estrutura
 
 - `apps/web`: landing, demonstração, acesso e área operacional.
