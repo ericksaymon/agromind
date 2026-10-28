@@ -194,3 +194,8 @@
 .analysis-method { margin: 18px 0; padding: 14px; border: 1px solid #dce3d6; border-radius: 8px; }
 .analysis-method summary { cursor: pointer; font-size: .85rem; font-weight: 600; }
 @media(max-width: 600px) { .refinement-panel { padding: 14px; } .quality-list li { align-items: flex-start; flex-direction: column; gap: 6px; } }
+
+/* Entrada no app (lib/enter-app.ts): a página nova abre coberta pela mesma tela verde e o componente EnterReveal a dissolve. */
+html.enter-cover::before { content: ""; position: fixed; inset: 0; z-index: 2147483000; background: var(--deep) url("/brand/agromind-symbol.png") center / min(130px, 34vw) auto no-repeat; opacity: 1; transition: opacity 260ms ease; pointer-events: none; }
+html.enter-cover.is-revealing::before { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { html.enter-cover::before { transition: none; } }

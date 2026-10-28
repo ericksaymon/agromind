@@ -15,6 +15,22 @@
 .auth-story-example svg { color: #aecb7b; }
 .auth-story-bottom { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #aac09f; }
 .auth-watermark { position: absolute; width: 480px; max-width: none; bottom: 40px; right: -150px; z-index: -1; opacity: .035; transform: rotate(12deg); }
+/* Entrada no app (lib/enter-app.ts): a cópia do painel verde cresce até cobrir a janela e o símbolo brota ao centro. */
+.auth-page.is-leaving > .auth-main { opacity: 0; transition: opacity 150ms ease; }
+.enter-overlay { position: fixed; z-index: 2147483000; top: var(--enter-top); right: var(--enter-right); bottom: var(--enter-bottom); left: var(--enter-left); overflow: hidden; background: var(--deep); transition: top var(--enter-open) cubic-bezier(.2, .8, .2, 1), right var(--enter-open) cubic-bezier(.2, .8, .2, 1), bottom var(--enter-open) cubic-bezier(.2, .8, .2, 1), left var(--enter-open) cubic-bezier(.2, .8, .2, 1); }
+html.is-entering { overflow: hidden; }
+.enter-overlay.is-open { top: 0; right: 0; bottom: 0; left: 0; }
+.enter-overlay .enter-copy { box-sizing: border-box; width: 100%; height: 100%; }
+.enter-overlay.is-open .enter-copy > * { opacity: 0; transition: opacity 140ms ease; }
+.enter-sprout { position: absolute; inset: 0; display: grid; place-items: center; }
+.enter-sprout > * { grid-area: 1 / 1; }
+.enter-sprout img { width: min(130px, 34vw); height: auto; transform-origin: 50% 100%; transform: translateY(14px) scale(.15); opacity: 0; }
+.enter-glow { width: min(260px, 60vw); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #aecb7b55 0%, #aecb7b00 68%); transform: scale(.2); opacity: 0; }
+.enter-overlay.is-open .enter-sprout img { animation: enter-sprout 320ms cubic-bezier(.34, 1.45, .5, 1) calc(var(--enter-open) * .45) forwards; }
+.enter-overlay.is-open .enter-glow { animation: enter-glow 380ms ease-out calc(var(--enter-open) * .45) forwards; }
+@keyframes enter-sprout { 0% { transform: translateY(14px) scale(.15); opacity: 0; } 35% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes enter-glow { 0% { transform: scale(.2); opacity: 0; } 40% { opacity: 1; } 100% { transform: scale(1.5); opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .enter-overlay, .auth-page.is-leaving > .auth-main { transition: none; } .enter-overlay.is-open .enter-sprout img, .enter-overlay.is-open .enter-glow { animation: none; opacity: 1; transform: none; } }
 .auth-main { padding: 31px 55px 22px; display: flex; flex-direction: column; align-items: center; background: var(--paper); min-width: 0; }
 .auth-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; min-height: 35px; color: #5d7253; }
 .auth-back:hover { color: var(--green); }

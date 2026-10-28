@@ -1,3 +1,5 @@
+import { enterApp } from "./enter-app";
+
 export class RequestError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); }
 }
@@ -24,7 +26,8 @@ export async function continueAfterLogin() {
   const session = await apiRequest<{ user: { emailVerified: boolean }; property: unknown }>("/api/auth/me");
   const target = safeReturnTo(new URLSearchParams(window.location.search).get("returnTo")) || safeReturnTo(sessionStorage.getItem("agromind.returnTo")) || (sessionStorage.getItem("agromind.invitation") ? "/convite" : null);
   if (session.user.emailVerified) sessionStorage.removeItem("agromind.returnTo");
-  window.location.assign(!session.user.emailVerified ? "/verificar-email" : target || (!session.property ? "/configuracao-inicial" : "/app"));
+  if (!session.user.emailVerified) { window.location.assign("/verificar-email"); return; }
+  enterApp(target || (!session.property ? "/configuracao-inicial" : "/app"));
 }
 
 export function safeReturnTo(value: string | null) { return value === "/convite" || value === "/conta" ? value : null; }
