@@ -67,9 +67,9 @@ test("estoque real: cadastro, lote, consumo, estorno e importação conferida", 
   await page.getByRole("button", { name: "Novo produto", exact: true }).click();
   let dialog = page.getByRole("dialog");
   await dialog.getByLabel("Nome do insumo").fill("Diesel S10");
-  await dialog.getByLabel("Estoque mínimo").fill("30");
-  await dialog.getByRole("button", { name: "Conferir cadastro" }).click();
-  await dialog.getByRole("button", { name: "Confirmar produto" }).click();
+  await dialog.getByRole("radio", { name: "Combustíveis" }).click();
+  await dialog.getByLabel(/Avisar quando faltar/).fill("30");
+  await dialog.getByRole("button", { name: "Só cadastrar" }).click();
   await expect(page.getByRole("status")).toContainText("Produto cadastrado");
   await page.getByRole("link", { name: "Diesel S10", exact: true }).click();
   await expect(

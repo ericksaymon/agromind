@@ -104,8 +104,8 @@
   .chart-column:nth-child(7) i { animation-delay: 180ms; }
   .movement-dialog[open] { animation: agromind-enter 200ms ease-out; }
   .metrics, .stock-panel, .expiry-panel, .recommendation { animation: agromind-panel-enter 200ms ease-out; }
-  .button svg, .text-link svg, .footer-cta svg { transition: transform 180ms ease; }
-  .button:hover svg, .text-link:hover svg, .footer-cta:hover svg { transform: translateX(2px); }
+  .button svg:not(.spin), .text-link svg:not(.spin), .footer-cta svg:not(.spin) { transition: transform 180ms ease; }
+  .button:hover svg:not(.spin), .text-link:hover svg:not(.spin), .footer-cta:hover svg:not(.spin) { transform: translateX(2px); }
 }
 @media (max-width: 650px) {
   .stage-caption { padding: 12px 14px; align-items: center; }

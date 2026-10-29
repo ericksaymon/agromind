@@ -54,7 +54,10 @@ export function ImportReconciliation({
                   <th>Entradas</th>
                   <th>Retiradas</th>
                   <th>Saldo após importar</th>
-                  <th>Saldo conferido na fonte (opcional)</th>
+                  <th>
+                    Seu saldo final (opcional)
+                    <small>Digite o saldo que sua planilha ou contagem mostra</small>
+                  </th>
                   <th>Conferência</th>
                 </tr>
               </thead>
@@ -73,7 +76,9 @@ export function ImportReconciliation({
                       <th scope="row">
                         {p.name}
                         <small>
-                          {p.unit} · linhas {p.lines.join(", ")}
+                          {p.unit} · {p.lines.length} linhas (
+                          {p.lines.slice(0, 6).join(", ")}
+                          {p.lines.length > 6 ? "…" : ""})
                         </small>
                       </th>
                       <td>{number(p.before)}</td>
@@ -83,6 +88,7 @@ export function ImportReconciliation({
                       <td>
                         <input
                           aria-label={`Saldo conferido de ${p.name}`}
+                          title="Opcional: o saldo final que sua planilha ou contagem mostra para este produto"
                           inputMode="decimal"
                           value={raw}
                           onChange={(e) =>
@@ -96,7 +102,7 @@ export function ImportReconciliation({
                       </td>
                       <td>
                         {!raw.trim()
-                          ? "Sem referência externa"
+                          ? "Não conferido (opcional)"
                           : !valid
                             ? "Informe um saldo válido"
                             : Math.abs(difference!) < 0.0005
@@ -113,10 +119,13 @@ export function ImportReconciliation({
             <p>Selecione registros válidos para conferir o resultado.</p>
           )}
           <p className="stock-help">
-            A referência opcional serve somente à conferência desta tela e não
-            ajusta o estoque. Para resolver divergências, corrija ou desmarque
-            registros; se precisar, cancele e escolha o outro tipo de
-            importação. A confirmação final revalida saldo, lotes e datas no
+            <strong>Para que serve “Seu saldo final”:</strong> se você já sabe
+            quanto deveria sobrar de cada produto (pela planilha original ou
+            por uma contagem), digite aqui. Comparamos com o “Saldo após
+            importar” e avisamos se algo não bate, como uma linha faltando ou
+            duplicada. É opcional, serve só para conferir esta tela e não altera
+            o estoque. Para resolver divergências, corrija ou desmarque
+            registros. A confirmação final revalida saldo, lotes e datas no
             servidor.
           </p>
         </>

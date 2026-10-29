@@ -221,7 +221,7 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     page.getByRole("heading", { name: "Inteligência do estoque", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".analysis-reference").first()).toContainText(
-    "Dados conferidos nesta consulta",
+    "Dados atualizados",
   );
   await page
     .getByLabel("Produto no gráfico", { exact: true })

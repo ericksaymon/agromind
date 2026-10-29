@@ -32,6 +32,57 @@ import {
 } from "../../../../packages/contracts/src/index";
 import { ImportReconciliation } from "./import-reconciliation";
 const fields = Object.keys(importFields) as ImportField[];
+const fieldCopy: Record<ImportField, { label: string; help: string }> = {
+  product: { label: "Nome do produto", help: "Como o insumo se chama (ex.: Calcário dolomítico)." },
+  quantity: { label: "Quantidade", help: "Quanto você tem ou quanto foi movimentado, só o número." },
+  unit: { label: "Unidade de medida", help: "kg, g, L, mL, un ou m. Outras unidades precisam ser convertidas na planilha." },
+  category: { label: "Categoria", help: "O grupo do produto (ex.: Corretivos). Precisa já existir no sistema; sem coluna, usamos “Outros”." },
+  minimum: { label: "Estoque mínimo", help: "Abaixo dessa quantidade o sistema avisa que é hora de repor." },
+  unitCost: { label: "Custo por unidade (R$)", help: "Quanto custa 1 unidade, em reais. Permite calcular o valor parado em estoque." },
+  lot: { label: "Código do lote", help: "Número impresso na embalagem. Sem coluna, usamos “SEM-LOTE”." },
+  expiry: { label: "Data de validade", help: "DD/MM/AAAA ou AAAA-MM-DD. Escreva N/A se o produto não vence." },
+  supplier: { label: "Fornecedor", help: "De quem você comprou." },
+  kind: { label: "Tipo de movimento", help: "Entrada, saída, abertura (saldo inicial) ou ajuste." },
+  date: { label: "Data da movimentação", help: "O dia em que aconteceu de verdade, não o dia do cadastro." },
+  destination: { label: "Destino de uso", help: "Onde foi aplicado ou para onde foi (talhão, máquina, outra unidade)." },
+  notes: { label: "Observações", help: "Qualquer texto livre; é só guardado junto do registro." },
+  reference: { label: "Código de referência", help: "Número da nota, pedido ou registro no sistema antigo. Ajuda a rastrear e evita importar duas vezes." },
+  responsible: { label: "Quem fez a movimentação", help: "Nome da pessoa que registrou ou executou na época." },
+  usageConfirmed: { label: "Essa saída foi consumo? (sim/não)", help: "Uma saída pode ser uso, perda ou venda. Só contam como consumo (base do cálculo de autonomia) as linhas com “sim”, “uso” ou “consumo”." },
+};
+// Infere o formato numérico pelos valores reais das colunas numéricas associadas.
+// Devolve null quando não há evidência (ex.: só inteiros).
+function detectLocale(
+  sheet: { rows: string[][] } | undefined,
+  mapping: Partial<Record<ImportField, number>>,
+): "BR" | "DOT" | null {
+  if (!sheet) return null;
+  const cols = (["quantity", "minimum", "unitCost"] as ImportField[])
+    .map((f) => mapping[f])
+    .filter((i): i is number => i !== undefined);
+  let br = false,
+    dot = false,
+    groupedOnly = false;
+  for (const row of sheet.rows) {
+    for (const i of cols) {
+      const v = (row[i] || "").trim();
+      if (/,\d{1,4}$/.test(v)) br = true;
+      else if (/^\d+\.\d+$/.test(v)) {
+        if (/^\d{1,3}(\.\d{3})+$/.test(v) && !/^0\./.test(v)) groupedOnly = true;
+        else dot = true;
+      }
+    }
+  }
+  if (br && !dot) return "BR";
+  if (dot && !br) return "DOT";
+  if (!br && !dot && groupedOnly) return "BR";
+  return null;
+}
+const optionalGroups: { title: string; fields: ImportField[] }[] = [
+  { title: "Sobre o produto", fields: ["category", "minimum", "unitCost"] },
+  { title: "Sobre o lote", fields: ["lot", "expiry", "supplier"] },
+  { title: "Sobre cada movimentação", fields: ["kind", "date", "destination", "responsible", "reference", "notes", "usageConfirmed"] },
+];
 type BatchList = {
   id: string;
   fileName: string;
@@ -70,7 +121,8 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
       }[]
     >([]),
     [dirty, setDirty] = useState(false),
-    [aiNote, setAiNote] = useState("");
+    [aiNote, setAiNote] = useState(""),
+    [localeAuto, setLocaleAuto] = useState(false);
   const write = property.role !== "VIEWER";
   const load = useCallback(async () => {
     try {
@@ -87,8 +139,8 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
   useEffect(() => {
     void load();
   }, [load]);
-  async function upload(e: React.FormEvent) {
-    e.preventDefault();
+  async function upload(e?: React.FormEvent, forcedMode?: "POSITION" | "HISTORY") {
+    e?.preventDefault();
     if (!file) return;
     setBusy(true);
     setError("");
@@ -105,10 +157,13 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
       const draft = await apiRequest<ImportView>(`${base}/imports`, {
         fileName: file.name,
         content,
-        mode,
+        mode: forcedMode ?? mode,
       });
       setBatch(draft);
       setMapping(draft.mapping);
+      const found = detectLocale(draft.sheets[0], draft.mapping);
+      setLocaleAuto(found !== null);
+      if (found) setLocale(found);
       setStep(2);
       setSheet(0);
       setEdits([]);
@@ -127,6 +182,9 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
       const draft = await apiRequest<ImportView>(`${base}/imports/${id}`);
       setBatch(draft);
       setMapping(draft.mapping);
+      const found = detectLocale(draft.sheets[0], draft.mapping);
+      setLocaleAuto(found !== null);
+      if (found) setLocale(found);
       setMode(draft.mode);
       setEdits([]);
       setSheet(0);
@@ -178,6 +236,9 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
         model: string;
       }>(`${base}/imports/${batch.id}/analyze`, { sheet, consent: true });
       setMapping(result.mapping);
+      const found = detectLocale(batch.sheets[sheet], result.mapping);
+      setLocaleAuto(found !== null);
+      if (found) setLocale(found);
       setAiNote(
         `Sugestão de ${result.model}. ${result.note || "Confira cada associação antes de continuar."}`,
       );
@@ -420,6 +481,11 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                   ? "Posição de estoque"
                   : "Histórico de movimentações"}
               </p>
+              <p>
+                Diga ao sistema qual coluna da sua planilha corresponde a cada
+                informação. Já preenchemos o que reconhecemos: normalmente basta
+                conferir os exemplos e seguir.
+              </p>
             </div>
             <button
               className="stock-text-button"
@@ -436,6 +502,36 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
             </div>
           )}
           <div className="stock-form">
+            {batch.mode === "POSITION" &&
+              mapping.kind !== undefined &&
+              mapping.date !== undefined && (
+                <div className="stock-warning import-mode-hint" role="status">
+                  <strong>Esta planilha parece um histórico de movimentações.</strong>{" "}
+                  Ela tem colunas de tipo e de data por linha, mas foi enviada
+                  como “Posição de estoque”: nesse modo o tipo e a data de cada
+                  linha são ignorados e todas viram saldo inicial.
+                  {file ? (
+                    <button
+                      type="button"
+                      className="stock-secondary"
+                      disabled={busy}
+                      onClick={async () => {
+                        try {
+                          await apiRequest(`${base}/imports/${batch.id}/cancel`, {});
+                        } catch {
+                          /* rascunho antigo expira sozinho em 24 h */
+                        }
+                        setMode("HISTORY");
+                        void upload(undefined, "HISTORY");
+                      }}
+                    >
+                      Reenviar como histórico
+                    </button>
+                  ) : (
+                    " Cancele o rascunho e envie de novo escolhendo “Histórico de movimentações”."
+                  )}
+                </div>
+              )}
             <div className="stock-form-grid">
               <label>
                 Aba da planilha
@@ -462,6 +558,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                   value={locale}
                   onChange={(e) => {
                     setLocale(e.target.value as typeof locale);
+                    setLocaleAuto(false);
                     setEdits([]);
                     setDirty(true);
                   }}
@@ -469,6 +566,11 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                   <option value="BR">Brasileiro: 1.250,50</option>
                   <option value="DOT">Ponto decimal: 1250.50</option>
                 </select>
+                {localeAuto && (
+                  <small className="import-field-example">
+                    Detectado automaticamente pelos números da sua planilha.
+                  </small>
+                )}
               </label>
               {batch.mode === "POSITION" && (
                 <label>
@@ -517,16 +619,23 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
               const field = (f: ImportField) => (
                 <label key={f}>
                   <span>
-                    {importFields[f]}
+                    {fieldCopy[f].label}
                     {required.includes(f) && <small> obrigatório</small>}
                   </span>
+                  <small className="import-field-help">{fieldCopy[f].help}</small>
                   <select
                     value={mapping[f] ?? ""}
                     onChange={(e) => {
-                      setMapping({
+                      const next = {
                         ...mapping,
                         [f]: e.target.value === "" ? undefined : Number(e.target.value),
-                      });
+                      };
+                      setMapping(next);
+                      const found = detectLocale(batch.sheets[sheet], next);
+                      if (found && found !== locale) {
+                        setLocale(found);
+                        setLocaleAuto(true);
+                      }
                       setEdits([]);
                       setDirty(true);
                     }}
@@ -538,39 +647,73 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                       </option>
                     ))}
                   </select>
-                  <small>
+                  <small className="import-field-example">
                     {mapping[f] !== undefined
-                      ? `Ex.: ${batch.sheets[sheet]?.rows[0]?.[mapping[f]!] || "(vazio)"}`
-                      : "Você poderá corrigir os dados por registro na prévia."}
+                      ? `Na sua planilha, 1ª linha: ${batch.sheets[sheet]?.rows[0]?.[mapping[f]!] || "(vazio)"}`
+                      : required.includes(f)
+                        ? "Escolha a coluna correspondente para continuar."
+                        : "Sem coluna: ficará como não informado. Você pode corrigir na prévia."}
                   </small>
                 </label>
               );
-              const optional = fields.filter((f) => !required.includes(f));
+              // Em posição de estoque, tipo/data/uso são definidos pelo sistema.
+              const hiddenInPosition: ImportField[] = ["kind", "date", "usageConfirmed"];
+              const groups = optionalGroups
+                .map((g) => ({
+                  ...g,
+                  fields: g.fields.filter(
+                    (f) =>
+                      !required.includes(f) &&
+                      !(batch.mode === "POSITION" && hiddenInPosition.includes(f)),
+                  ),
+                }))
+                .filter((g) => g.fields.length);
+              const optional = groups.flatMap((g) => g.fields);
               const filled = optional.filter((f) => mapping[f] !== undefined).length;
+              const missing = required.filter((f) => mapping[f] === undefined);
               return (
                 <>
+                  <p
+                    className={`import-required-status${missing.length ? " is-missing" : ""}`}
+                    role="status"
+                  >
+                    {missing.length
+                      ? `Falta associar: ${missing.map((f) => fieldCopy[f].label).join(", ")}.`
+                      : `Tudo certo: os ${required.length} campos obrigatórios estão associados. Confira os exemplos e siga em frente.`}
+                  </p>
+                  <h3 className="import-group-title">Informações obrigatórias</h3>
                   <div className="import-mapping">{required.map(field)}</div>
-                  <details className="import-optional" open={filled > 0}>
+                  <details className="import-optional" open={filled > 0 || missing.length === 0}>
                     <summary>
-                      Campos opcionais ({filled} de {optional.length} associados)
+                      Informações extras (opcionais) · {filled} de {optional.length} associadas
                     </summary>
-                    <div className="import-mapping">{optional.map(field)}</div>
+                    {groups.map((g) => (
+                      <section key={g.title} className="import-group">
+                        <h3 className="import-group-title">{g.title}</h3>
+                        <div className="import-mapping">{g.fields.map(field)}</div>
+                      </section>
+                    ))}
                   </details>
                 </>
               );
             })()}
             <p className="stock-help">
-              Na posição de estoque, cada registro gera uma abertura de lote.
-              Produtos que já têm histórico exigem movimentos ou ajuste
-              conciliado. No histórico, tipo e data são obrigatórios. Custos
-              sempre em reais por unidade; converta outras moedas antes de
-              enviar.
+              {batch.mode === "POSITION"
+                ? "Cada linha vira o saldo inicial de um lote, na data informada acima. Se um produto já tem movimentações no sistema, ajuste o saldo pela conciliação na próxima etapa. Custos sempre em reais por unidade."
+                : "Cada linha vira uma movimentação datada. Tipo e data são obrigatórios. Custos sempre em reais por unidade; converta outras moedas antes de enviar."}{" "}
+              Nada é gravado até você confirmar na próxima etapa.
             </p>
             <footer>
               <button
                 type="button"
                 className="button button-green"
-                disabled={busy || !write}
+                disabled={
+                  busy ||
+                  !write ||
+                  ["product", "quantity", "unit", ...(batch.mode === "HISTORY" ? ["kind", "date"] : [])].some(
+                    (f) => mapping[f as ImportField] === undefined,
+                  )
+                }
                 onClick={() => {
                   void preview();
                 }}

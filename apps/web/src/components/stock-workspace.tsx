@@ -18,14 +18,12 @@ import {
 import { apiRequest, RequestError } from "@/lib/auth-client";
 import { ProductAnalytics, ClassifyMovement } from "@/components/analysis-workspace";
 import {
-  stockCategories,
   stockKinds,
   stockUnits,
   type InventoryView,
   type ProductView,
   type MovementView,
   type MovementInput,
-  type ProductInput,
   type PropertySummary,
 } from "../../../../packages/contracts/src/index";
 export const number = (value: string | number) =>
@@ -75,7 +73,6 @@ export function StockDialog({
         e.preventDefault();
         close();
       }}
-      onClose={close}
     >
       <header>
         <div>
@@ -133,7 +130,8 @@ export function StockWorkspace({
       "product" | "movement" | "archive" | null
     >(null),
     [edit, setEdit] = useState<ProductView | null>(null);
-  const [moving, setMoving] = useState("");
+  const [moving, setMoving] = useState(""),
+    [movingKind, setMovingKind] = useState<MovementInput["kind"]>("IN");
   const latestInventory = useRef(0);
   const base = `/api/properties/${property.id}`;
   const reload = useCallback(async () => {
@@ -151,10 +149,14 @@ export function StockWorkspace({
   }, [reload]);
   const canWrite = property.role !== "VIEWER",
     product = inventory?.products.find((p) => p.id === productId);
-  async function done(message: string) {
-    setDialog(null);
+  async function done(message: string, thenRegister?: string) {
     setNotice(message);
     await reload();
+    if (thenRegister) {
+      setMoving(thenRegister);
+      setMovingKind("OPENING");
+      setDialog("movement");
+    } else setDialog(null);
   }
   const filtered =
     inventory?.products.filter(
@@ -208,6 +210,7 @@ export function StockWorkspace({
                 className="stock-secondary"
                 onClick={() => {
                   setMoving(product?.id || "");
+                  setMovingKind("IN");
                   setDialog("movement");
                 }}
                 disabled={!inventory?.products.some((p) => !p.archived)}
@@ -552,9 +555,9 @@ export function StockWorkspace({
           property={property}
           revision={inventory.revision}
           product={edit}
+          products={inventory.products}
           close={() => setDialog(null)}
           done={done}
-          reload={reload}
         />
       )}
       {dialog === "movement" && inventory && (
@@ -562,6 +565,7 @@ export function StockWorkspace({
           property={property}
           inventory={inventory}
           initialProduct={moving}
+          initialKind={movingKind}
           close={() => setDialog(null)}
           done={done}
           reload={reload}
@@ -596,60 +600,176 @@ function Summary({
     </article>
   );
 }
+const nameKeyOf = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+const categoryHints: [RegExp, string][] = [
+  [/diesel|gasolina|etanol|querosene/, "Combustíveis"],
+  [/oleo|graxa|lubrific|fluido hidraulico/, "Lubrificantes"],
+  [/ureia|npk|fertiliz|adubo|fosfato|cloreto de potassio|kcl/, "Fertilizantes"],
+  [/calcario|gesso|corretivo|cal /, "Corretivos"],
+  [/semente|muda/, "Sementes"],
+  [/herbicida|fungicida|inseticida|glifosato|defensivo|biologico/, "Defensivos e biológicos"],
+  [/filtro|correia|rolamento|peca|parafuso|pneu/, "Peças e manutenção"],
+  [/mangueira|gotejador|irriga|aspersor/, "Irrigação"],
+  [/luva|bota|mascara|capacete|epi/, "EPI"],
+];
+const unitExamples: Record<string, string> = {
+  L: "Ex.: diesel, óleo, herbicida líquido",
+  kg: "Ex.: ração, ureia, sementes a granel",
+  g: "Ex.: aditivos e micronutrientes",
+  mL: "Ex.: vacinas, adjuvantes",
+  un: "Ex.: filtros, luvas, peças (só quantidades inteiras)",
+  m: "Ex.: mangueira, arame, cerca",
+};
+type CatalogCategory = { id: string; name: string; archived: boolean };
 function ProductForm({
   property,
   revision,
   product,
+  products,
   close,
   done,
-  reload,
 }: {
   property: PropertySummary;
   revision: number;
   product: ProductView | null;
+  products: ProductView[];
   close: () => void;
-  done: (s: string) => Promise<void>;
-  reload: () => Promise<void>;
+  done: (s: string, thenRegister?: string) => Promise<void>;
 }) {
   const [name, setName] = useState(product?.name || ""),
     [category, setCategory] = useState(product?.category || ""),
     [unit, setUnit] = useState(product?.unit || "L"),
-    [minimum, setMinimum] = useState(product?.minimum || "0"),
-    [minimumKnown, setMinimumKnown] = useState(product?.minimumKnown ?? true),
-    [similar, setSimilar] = useState(false),
+    [minimum, setMinimum] = useState(
+      product && Number(product.minimum) > 0 ? product.minimum : "",
+    ),
+    [ackKey, setAckKey] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [pending, setPending] = useState<
-      (ProductInput & { key: string; revision: number }) | null
-    >(null);
-  const [catalog, setCatalog] = useState<{id:string;name:string;archived:boolean}[]>([]);
-  useEffect(() => { let active=true; apiRequest<{id:string;name:string;archived:boolean}[]>(`/api/properties/${property.id}/categories`).then(rows=>{if(active){setCatalog(rows.filter(c=>!c.archived||c.name===product?.category));if(!product)setCategory(rows.find(c=>!c.archived)?.name||"");}}).catch(e=>{if(active)setError(e.message);}); return()=>{active=false;}; }, [property.id,product]);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (!pending) {
-      setPending({
-        name,
-        category,
-        unit,
-        minimum: inputNumber(minimum),
-        minimumKnown,
-        acknowledgeSimilar: similar,
-        key: crypto.randomUUID(),
-        revision,
+    [catalog, setCatalog] = useState<CatalogCategory[] | null>(null),
+    [creating, setCreating] = useState(false),
+    [newCategory, setNewCategory] = useState(""),
+    [categoryBusy, setCategoryBusy] = useState(false);
+  const isAdmin = property.role === "ADMIN";
+  useEffect(() => {
+    let active = true;
+    apiRequest<CatalogCategory[]>(`/api/properties/${property.id}/categories`)
+      .then((rows) => {
+        if (active)
+          setCatalog(
+            rows
+              .filter((c) => !c.archived || c.name === product?.category)
+              .sort(
+                (a, b) =>
+                  Number(a.name === "Outros") - Number(b.name === "Outros"),
+              ),
+          );
+      })
+      .catch((e) => {
+        if (active) {
+          setCatalog([]);
+          setError((e as Error).message);
+        }
       });
+    return () => {
+      active = false;
+    };
+  }, [property.id, product]);
+  const key = nameKeyOf(name),
+    words = key.split(" ").filter((w) => w.length > 2),
+    others = products.filter((p) => p.id !== product?.id),
+    exact = key ? others.find((p) => nameKeyOf(p.name) === key) : undefined,
+    similar =
+      !product && !exact
+        ? others
+            .filter((p) => {
+              const theirs = nameKeyOf(p.name).split(" ");
+              return words.some((w) => theirs.includes(w));
+            })
+            .slice(0, 4)
+        : [],
+    acknowledged = ackKey === key,
+    blocked = Boolean(exact) || (similar.length > 0 && !acknowledged),
+    hinted = categoryHints.find(([re]) => re.test(key + " "))?.[1],
+    suggestion = !category
+      ? catalog?.find((c) => !c.archived && c.name === hinted)
+      : undefined;
+  async function addCategory() {
+    const value = newCategory.trim();
+    if (value.length < 2) {
+      setError("Dê um nome de pelo menos 2 letras à categoria.");
+      return;
+    }
+    setCategoryBusy(true);
+    setError("");
+    try {
+      const existing = catalog?.find(
+        (c) => nameKeyOf(c.name) === nameKeyOf(value),
+      );
+      if (existing && !existing.archived) setCategory(existing.name);
+      else {
+        const created = await apiRequest<{ id: string }>(
+          `/api/properties/${property.id}/categories`,
+          {
+            key: crypto.randomUUID(),
+            reason: "Criada ao cadastrar um produto no estoque",
+            name: value,
+          },
+        );
+        setCatalog((rows) => [
+          ...(rows || []),
+          { id: created.id, name: value, archived: false },
+        ]);
+        setCategory(value);
+      }
+      setCreating(false);
+      setNewCategory("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCategoryBusy(false);
+    }
+  }
+  async function save(thenRegister: boolean) {
+    setError("");
+    if (!category) {
+      setError("Escolha uma categoria para o produto.");
+      return;
+    }
+    const chosen = catalog?.find((c) => c.name === category);
+    const clean = inputNumber(minimum);
+    if (clean && (!Number.isFinite(Number(clean)) || Number(clean) < 0)) {
+      setError("O estoque mínimo precisa ser um número maior ou igual a zero.");
       return;
     }
     setBusy(true);
     try {
-      await apiRequest(
+      const saved = await apiRequest<{ id: string }>(
         `/api/properties/${property.id}/products${product ? `/${product.id}/update` : ""}`,
-        pending,
+        {
+          name,
+          category,
+          categoryId: chosen?.id,
+          unit,
+          minimum: clean || "0",
+          minimumKnown: clean ? true : (product?.minimumKnown ?? true),
+          acknowledgeSimilar: acknowledged,
+          key: crypto.randomUUID(),
+          revision,
+        },
       );
       await done(
         product
           ? "Produto atualizado."
-          : "Produto cadastrado. Agora você pode registrar a abertura do estoque.",
+          : thenRegister
+            ? "Produto cadastrado. Informe agora a quantidade que há em estoque."
+            : "Produto cadastrado. Registre a quantidade inicial quando quiser.",
+        thenRegister ? saved.id : undefined,
       );
     } catch (e) {
       setError((e as Error).message);
@@ -662,136 +782,221 @@ function ProductForm({
       title={product ? "Editar produto" : "Novo produto"}
       close={close}
     >
-      <form className="stock-form" onSubmit={submit}>
-        {pending ? (
-          <div className="stock-review">
-            <span className="stock-badge">CONFIRA ANTES DE SALVAR</span>
-            <h3>{pending.name}</h3>
-            <dl>
-              <div>
-                <dt>Categoria</dt>
-                <dd>{pending.category}</dd>
-              </div>
-              <div>
-                <dt>Unidade base</dt>
-                <dd>{pending.unit}</dd>
-              </div>
-              <div>
-                <dt>Estoque mínimo</dt>
-                <dd>
-                  {pending.minimumKnown ? `${pending.minimum} ${pending.unit}` : "Não confirmado"}
-                </dd>
-              </div>
-            </dl>
+      <form
+        className="stock-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!blocked) void save(!product);
+        }}
+      >
+        <label>
+          Nome do insumo
+          <input
+            required
+            autoFocus
+            minLength={2}
+            maxLength={120}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex.: Diesel S10"
+          />
+        </label>
+        {exact && (
+          <div className="stock-callout is-error" role="alert">
             <p>
-              O cadastro não altera quantidades. A quantidade inicial será
-              registrada em uma abertura com lote e data.
+              <strong>“{exact.name}” já está cadastrado.</strong> Para somar
+              quantidade, registre uma entrada nele em vez de criar outro.
             </p>
+            <Link
+              href={`/app/estoque/${exact.id}`}
+              className="stock-secondary"
+              prefetch={false}
+            >
+              Abrir {exact.name}
+            </Link>
           </div>
-        ) : (
-          <>
-            <label>
-              Nome do insumo
-              <input
-                required
-                minLength={2}
-                maxLength={120}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex.: Diesel S10"
-              />
-            </label>
-            <label>
-              Categoria
-              <input
-                required
-                list="stock-categories"
-                maxLength={80}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              />
-              <datalist id="stock-categories">
-                {stockCategories.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </label>
-            <div className="stock-form-grid">
-              <label>
-                Unidade base
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  disabled={Boolean(product?.lots.length)}
-                >
-                  {stockUnits.map((u) => (
-                    <option key={u}>{u}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Estoque mínimo
-                <input
-                  required
-                  inputMode="decimal"
-                  value={minimum}
-                  onChange={(e) => setMinimum(e.target.value)}
-                  maxLength={22}
-                />
-              </label>
-            </div>
-            <p className="stock-help">
-              Use vírgula ou ponto para decimais, sem separador de milhar. Cada
-              produto usa uma unidade base; sacos e embalagens precisam ser
-              convertidos explicitamente.
+        )}
+        {similar.length > 0 && (
+          <div className="stock-callout" role="status">
+            <p>
+              <strong>
+                {similar.length === 1
+                  ? "Já existe um produto parecido:"
+                  : "Já existem produtos parecidos:"}
+              </strong>
             </p>
-            <label className="stock-checkbox"><input type="checkbox" checked={minimumKnown} onChange={e => setMinimumKnown(e.target.checked)} />Mínimo conferido nos registros ou informado pelo responsável. Zero desativa o limite.</label>
-            <label className="stock-checkbox">
-              <input
-                type="checkbox"
-                checked={similar}
-                onChange={(e) => setSimilar(e.target.checked)}
-              />
-              Se houver nomes semelhantes, confirmei que este é um produto
-              diferente.
-            </label>
-          </>
-        )}
-        <Feedback error={error} />
-        {error.includes("mudou") && (
-          <button
-            className="stock-secondary"
-            type="button"
-            onClick={async () => {
-              await reload();
-              setPending(null);
-              setError("");
-            }}
-          >
-            Atualizar dados e revisar
-          </button>
-        )}
-        <footer>
-          {pending && (
+            <ul>
+              {similar.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/app/estoque/${p.id}`} prefetch={false}>
+                    {p.name}
+                  </Link>{" "}
+                  <small>
+                    · {number(p.balance)} {p.unit}
+                  </small>
+                </li>
+              ))}
+            </ul>
             <button
               type="button"
-              className="stock-secondary"
-              onClick={() => setPending(null)}
-              disabled={busy}
+              className={acknowledged ? "stock-secondary is-on" : "stock-secondary"}
+              aria-pressed={acknowledged}
+              onClick={() => setAckKey(acknowledged ? "" : key)}
             >
-              Voltar para revisar
+              {acknowledged ? (
+                <>
+                  <Check size={15} /> Certo, é outro produto
+                </>
+              ) : (
+                "É outro produto, continuar"
+              )}
+            </button>
+          </div>
+        )}
+        <fieldset className="stock-category-field">
+          <legend>Categoria</legend>
+          {!catalog ? (
+            <span className="stock-help">Carregando categorias…</span>
+          ) : (
+            <div className="stock-chips" role="radiogroup" aria-label="Categoria">
+              {catalog.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={category === c.name}
+                  className={category === c.name ? "stock-chip is-on" : "stock-chip"}
+                  onClick={() => setCategory(c.name)}
+                >
+                  {c.name}
+                </button>
+              ))}
+              {isAdmin && !creating && (
+                <button
+                  type="button"
+                  className="stock-chip is-add"
+                  onClick={() => setCreating(true)}
+                >
+                  <Plus size={13} /> Nova categoria
+                </button>
+              )}
+            </div>
+          )}
+          {suggestion && (
+            <button
+              type="button"
+              className="stock-suggestion"
+              onClick={() => setCategory(suggestion.name)}
+            >
+              Sugestão: usar “{suggestion.name}”
             </button>
           )}
-          <button className="button button-green" disabled={busy}>
-            {busy ? (
-              <LoaderCircle size={16} className="spin" />
-            ) : pending ? (
-              <Check size={16} />
-            ) : (
-              <ArrowRight size={16} />
-            )}{" "}
-            {pending ? "Confirmar produto" : "Conferir cadastro"}
+          {creating && (
+            <div className="stock-inline-add">
+              <input
+                autoFocus
+                maxLength={80}
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addCategory();
+                  }
+                }}
+                placeholder="Nome da nova categoria"
+                aria-label="Nome da nova categoria"
+              />
+              <button
+                type="button"
+                className="stock-secondary"
+                disabled={categoryBusy}
+                onClick={() => void addCategory()}
+              >
+                {categoryBusy ? (
+                  <LoaderCircle size={15} className="spin" />
+                ) : (
+                  "Criar"
+                )}
+              </button>
+              <button
+                type="button"
+                className="stock-secondary"
+                onClick={() => {
+                  setCreating(false);
+                  setNewCategory("");
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+          {catalog && !isAdmin && (
+            <small className="stock-help">
+              Precisa de outra categoria? Peça a um administrador da
+              propriedade para criá-la em Configurações.
+            </small>
+          )}
+        </fieldset>
+        <div className="stock-form-grid">
+          <label>
+            <span>Unidade de medida</span>
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              disabled={Boolean(product?.lots.length)}
+            >
+              {stockUnits.map((u) => (
+                <option key={u}>{u}</option>
+              ))}
+            </select>
+            <small>{unitExamples[unit]}</small>
+          </label>
+          <label>
+            <span>
+              Avisar quando faltar ({unit}) <small>· opcional</small>
+            </span>
+            <input
+              inputMode="decimal"
+              value={minimum}
+              onChange={(e) => setMinimum(e.target.value)}
+              maxLength={22}
+              placeholder="Ex.: 200"
+            />
+            <small>Deixe vazio para não receber aviso.</small>
+          </label>
+        </div>
+        <Feedback error={error} />
+        <footer>
+          <button
+            type="button"
+            className="stock-secondary"
+            onClick={close}
+            disabled={busy}
+          >
+            Cancelar
           </button>
+          {product ? (
+            <button className="button button-green" disabled={busy || blocked}>
+              {busy ? <LoaderCircle size={16} className="spin" /> : <Check size={16} />}{" "}
+              Salvar alterações
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="stock-secondary"
+                disabled={busy || blocked}
+                onClick={() => void save(false)}
+              >
+                Só cadastrar
+              </button>
+              <button className="button button-green" disabled={busy || blocked}>
+                {busy ? <LoaderCircle size={16} className="spin" /> : <ArrowRight size={16} />}{" "}
+                Cadastrar e informar quantidade
+              </button>
+            </>
+          )}
         </footer>
       </form>
     </StockDialog>
@@ -801,6 +1006,7 @@ function MovementForm({
   property,
   inventory,
   initialProduct,
+  initialKind,
   close,
   done,
   reload,
@@ -808,6 +1014,7 @@ function MovementForm({
   property: PropertySummary;
   inventory: InventoryView;
   initialProduct: string;
+  initialKind: MovementInput["kind"];
   close: () => void;
   done: (s: string) => Promise<void>;
   reload: () => Promise<void>;
@@ -815,7 +1022,7 @@ function MovementForm({
   const [productId, setProductId] = useState(
       initialProduct || inventory.products.find((p) => !p.archived)?.id || "",
     ),
-    [kind, setKind] = useState<MovementInput["kind"]>("IN"),
+    [kind, setKind] = useState<MovementInput["kind"]>(initialKind),
     [lotId, setLotId] = useState("new"),
     [quantity, setQuantity] = useState(""),
     [date, setDate] = useState(localDay(property.timezone)),

@@ -314,19 +314,17 @@ export function IntelligenceWorkspace({
           <div
             className={`analysis-reference ${loading || error ? "pending" : ""}`}
             role="status"
+            title={`${r.timezone} · revisão ${r.revision} · política ${r.policyVersion}`}
           >
             <span>
               {loading || error ? <Clock3 size={15} /> : <Check size={15} />}
               {loading
-                ? "Atualizando; resultado anterior"
+                ? "Atualizando… mostrando o último resultado."
                 : error
-                  ? "Resultado anterior; atualização indisponível"
-                  : "Dados conferidos nesta consulta"}
+                  ? "Não foi possível atualizar agora. Mostrando o último resultado."
+                  : "Dados atualizados"}
             </span>
-            <small>
-              Referência atual: {date(r.referenceDay)} · {r.timezone} · revisão{" "}
-              {r.revision} · política {r.policyVersion}
-            </small>
+            {!loading && !error && <small>Dados de {date(r.referenceDay)}</small>}
           </div>
           <form
             className="intel-filters"
@@ -1392,15 +1390,15 @@ function Simulator({
           <div
             className={`analysis-reference ${old ? "pending" : ""}`}
             role="status"
+            title={`revisão ${result.revision} · política ${result.policyVersion}`}
           >
             <span>
               {old
-                ? "Cenário anterior; recalcule após as mudanças"
-                : "Cenário calculado sem alterar o estoque"}
+                ? "Resultado desatualizado. Compare de novo após as mudanças."
+                : "Simulação: seu estoque real não foi alterado."}
             </span>
             <small>
-              {result.productName} · referência {date(result.referenceDay)} ·
-              revisão {result.revision} · política {result.policyVersion}
+              {result.productName} · dados de {date(result.referenceDay)}
             </small>
           </div>
           {result.baseline && result.scenario ? (

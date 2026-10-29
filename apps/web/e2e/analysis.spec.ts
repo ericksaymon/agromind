@@ -68,7 +68,7 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await expect(page.getByRole("tab", { name: "Planejamento e simulação", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Produto", { exact: true })).toHaveValue(productId);
   for (const route of ["/app", "/app/alertas", `/app/estoque/${productId}`]) {
-    await page.setViewportSize({ width: 390, height: 844 }); await page.goto(route); await expect(page.locator(".analysis-reference").first()).toContainText("Análise atualizada");
+    await page.setViewportSize({ width: 390, height: 844 }); await page.goto(route); await expect(page.locator(".analysis-reference").first()).toContainText("Atualizado");
     await audit(page, route + " no celular"); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), route).toBe(true);
     await page.screenshot({ path: `../../tmp/phase4-${route === "/app" ? "dashboard" : route.includes("estoque") ? "product" : "alerts"}-mobile.png`, fullPage: true });
   }
@@ -76,8 +76,8 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await expect(page.getByText("Autonomia nominal: 4,5 dias", { exact: true })).toBeVisible();
   await page.route(`**/api/properties/${propertyId}/analysis`, route => route.abort());
   await page.getByRole("button", { name: "Atualizar análise", exact: true }).click();
-  await expect(page.locator(".analysis-reference")).toContainText("Atualização pendente"); await expect(page.locator(".stock-error[role=alert]")).toContainText("Não foi possível conectar");
+  await expect(page.locator(".analysis-reference")).toContainText("Atualizando"); await expect(page.locator(".stock-error[role=alert]")).toContainText("Não foi possível conectar");
   await page.unroute(`**/api/properties/${propertyId}/analysis`);
-  await page.getByRole("button", { name: "Atualizar análise", exact: true }).click(); await expect(page.locator(".analysis-reference")).toContainText("Análise atualizada");
+  await page.getByRole("button", { name: "Atualizar análise", exact: true }).click(); await expect(page.locator(".analysis-reference")).toContainText("Atualizado");
   expect(errors).toEqual([]);
 });

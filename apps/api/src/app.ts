@@ -70,9 +70,8 @@ export async function buildApp({ test = false } = {}) {
     const name = request.body.name.trim();
     if (name.length < 2 || !validPassword(value)) failure(400, "Use seu nome e uma senha de 8 a 128 caracteres com letras e números.");
     const passwordHash = await argon2.hash(value, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
-    const user = await db.user.create({ data: { name, email: normalize(request.body.email), passwordHash, termsVersion: settings.production ? "2026-10-23-piloto" : "2026-10-22-local" } });
+    const user = await db.user.create({ data: { name, email: normalize(request.body.email), passwordHash, termsVersion: settings.production ? "2026-10-23-piloto" : "2026-10-22-local", emailVerifiedAt: new Date() } });
     await createSession(user.id, request, reply, user.passwordHash);
-    try { await sendAction(user, "VERIFY_EMAIL"); } catch { return reply.code(201).send({ ok: true, mailPending: true }); }
     return reply.code(201).send({ ok: true });
   });
   app.post<{ Body: Static<typeof loginBody> }>("/api/auth/login", { schema: { body: loginBody }, config: restricted }, async (request, reply) => {
