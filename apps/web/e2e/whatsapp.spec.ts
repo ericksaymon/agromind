@@ -4,6 +4,7 @@ import { randomBytes, createHmac, randomUUID } from "node:crypto";
 import { db } from "../../api/src/db";
 import { digest, sessionCookie } from "../../api/src/security";
 import { processWhatsappEvent } from "../../api/src/whatsapp-service";
+import { pick } from "./select";
 const userIds: string[] = [], propertyIds: string[] = [], keys: string[] = [];
 test.afterAll(async () => {
   await db.whatsappPairAttempt.deleteMany({ where: { eventKey: { in: keys } } });
@@ -37,7 +38,7 @@ test("WhatsApp: gerar código, confirmar vínculo, trocar propriedade e desconec
   await expect(page.getByRole("heading", { name: "Sítio Girassol" })).toBeVisible();
   await expect(page.locator(".whatsapp-code")).toHaveCount(0);
   await expect(page.getByText("1111", { exact: true })).toBeVisible();
-  await page.getByLabel("Propriedade para as consultas").selectOption(properties[1].id);
+  await pick(page.getByLabel("Propriedade para as consultas"), properties[1].id);
   await page.getByRole("button", { name: "Gerar código para trocar conexão" }).click();
   await incoming();
   await expect(page.getByRole("heading", { name: "Fazenda Horizonte" })).toBeVisible({ timeout: 10000 });

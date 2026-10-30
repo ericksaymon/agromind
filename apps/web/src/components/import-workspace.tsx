@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -535,7 +536,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
             <div className="stock-form-grid">
               <label>
                 Aba da planilha
-                <select
+                <Select
                   value={sheet}
                   onChange={(e) => {
                     setSheet(Number(e.target.value));
@@ -550,11 +551,11 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                       {s.name} · {s.rows.length} registros
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 Formato dos números
-                <select
+                <Select
                   value={locale}
                   onChange={(e) => {
                     setLocale(e.target.value as typeof locale);
@@ -565,7 +566,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                 >
                   <option value="BR">Brasileiro: 1.250,50</option>
                   <option value="DOT">Ponto decimal: 1250.50</option>
-                </select>
+                </Select>
                 {localeAuto && (
                   <small className="import-field-example">
                     Detectado automaticamente pelos números da sua planilha.
@@ -623,7 +624,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                     {required.includes(f) && <small> obrigatório</small>}
                   </span>
                   <small className="import-field-help">{fieldCopy[f].help}</small>
-                  <select
+                  <Select
                     value={mapping[f] ?? ""}
                     onChange={(e) => {
                       const next = {
@@ -646,7 +647,7 @@ export function ImportWorkspace({ property }: { property: PropertySummary }) {
                         {index + 1}. {header}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <small className="import-field-example">
                     {mapping[f] !== undefined
                       ? `Na sua planilha, 1ª linha: ${batch.sheets[sheet]?.rows[0]?.[mapping[f]!] || "(vazio)"}`
@@ -1232,7 +1233,7 @@ function EditImportRow({
           <>
             <label>
               Associar a um produto
-              <select
+              <Select
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
               >
@@ -1244,13 +1245,13 @@ function EditImportRow({
                       {p.name} ({p.unit})
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
             <div className="stock-form-grid">
               {fields.map((f) => (
                 <label key={f}>
                   {importFields[f]}
-                  {f === "category" ? <select value={values[f]} onChange={e=>setValues({...values,category:e.target.value})}><option value="">Selecione uma categoria ativa</option>{values[f] && !inventory?.categories?.some(c=>!c.archived&&c.name===values[f]) && <option value={values[f]} disabled>{values[f]} (associação pendente)</option>}{inventory?.categories?.filter(c=>!c.archived).map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select> : <input
+                  {f === "category" ? <Select value={values[f]} onChange={e=>setValues({...values,category:e.target.value})}><option value="">Selecione uma categoria ativa</option>{values[f] && !inventory?.categories?.some(c=>!c.archived&&c.name===values[f]) && <option value={values[f]} disabled>{values[f]} (associação pendente)</option>}{inventory?.categories?.filter(c=>!c.archived).map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</Select> : <input
                     maxLength={500}
                     value={values[f]}
                     onChange={(e) =>

@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -419,7 +420,7 @@ export function StockWorkspace({
               </label>
               <label>
                 <span className="sr-only">Filtrar categoria</span>
-                <select
+                <Select
                   aria-label="Filtrar categoria"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -430,9 +431,9 @@ export function StockWorkspace({
                     .map((c) => (
                       <option key={c}>{c}</option>
                     ))}
-                </select>
+                </Select>
               </label>
-              <select
+              <Select
                 aria-label="Situação do produto"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -440,7 +441,7 @@ export function StockWorkspace({
                 <option value="active">Ativos</option>
                 <option value="archived">Arquivados</option>
                 <option value="all">Todos</option>
-              </select>
+              </Select>
             </div>
             {!inventory.products.length ? (
               <div className="stock-empty">
@@ -941,7 +942,7 @@ function ProductForm({
         <div className="stock-form-grid">
           <label>
             <span>Unidade de medida</span>
-            <select
+            <Select
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               disabled={Boolean(product?.lots.length)}
@@ -949,7 +950,7 @@ function ProductForm({
               {stockUnits.map((u) => (
                 <option key={u}>{u}</option>
               ))}
-            </select>
+            </Select>
             <small>{unitExamples[unit]}</small>
           </label>
           <label>
@@ -1154,7 +1155,7 @@ function MovementForm({
           <>
             <label>
               Produto
-              <select
+              <Select
                 value={productId}
                 onChange={(e) => {
                   setProductId(e.target.value);
@@ -1169,12 +1170,12 @@ function MovementForm({
                       {p.name} · {number(p.balance)} {p.unit}
                     </option>
                   ))}
-              </select>
+              </Select>
             </label>
             <div className="stock-form-grid">
               <label>
                 Tipo de operação
-                <select
+                <Select
                   value={kind}
                   onChange={(e) =>
                     chooseKind(e.target.value as MovementInput["kind"])
@@ -1195,7 +1196,7 @@ function MovementForm({
                       {stockKinds[k]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 Quantidade ({p?.unit})
@@ -1210,7 +1211,7 @@ function MovementForm({
             </div>
             <label>
               Lote
-              <select
+              <Select
                 required
                 value={lotId}
                 onChange={(e) => setLotId(e.target.value)}
@@ -1229,7 +1230,7 @@ function MovementForm({
                       : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {outgoing && (
               <p className="stock-help">
@@ -1254,7 +1255,7 @@ function MovementForm({
                 <div className="stock-form-grid">
                   <label>
                     Validade
-                    <select
+                    <Select
                       value={expiryStatus}
                       onChange={(e) =>
                         setExpiryStatus(e.target.value as typeof expiryStatus)
@@ -1263,7 +1264,7 @@ function MovementForm({
                       <option value="UNKNOWN">Não informada</option>
                       <option value="DATED">Informar data</option>
                       <option value="NA">Não se aplica</option>
-                    </select>
+                    </Select>
                   </label>
                   {expiryStatus === "DATED" && (
                     <label>
@@ -1509,7 +1510,7 @@ function History({
         {!productId && (
           <label>
             Produto
-            <select
+            <Select
               value={filterProduct}
               onChange={(e) => {
                 setFilterProduct(e.target.value);
@@ -1522,12 +1523,12 @@ function History({
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label>
           Operação
-          <select
+          <Select
             value={kind}
             onChange={(e) => {
               setKind(e.target.value);
@@ -1540,7 +1541,7 @@ function History({
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           De

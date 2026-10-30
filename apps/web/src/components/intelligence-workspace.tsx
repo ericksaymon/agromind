@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -48,8 +49,8 @@ const shift = (day: string, days: number) =>
 const tabs = [
   { id: "consumption", title: "Consumo" },
   { id: "finance", title: "Finanças" },
-  { id: "excess", title: "Excesso e capital parado" },
-  { id: "planning", title: "Planejamento e simulação" },
+  { id: "excess", title: "Parado e excesso" },
+  { id: "planning", title: "Planejar compras" },
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 type Filters = {
@@ -69,7 +70,7 @@ const initialFilters: Filters = {
   horizonDays: 30,
 };
 const comparison: Record<string, string> = {
-  INSUFFICIENT: "Cobertura insuficiente",
+  INSUFFICIENT: "Faltam registros",
   STARTED: "Início de consumo",
   NO_CONSUMPTION: "Sem consumo nos períodos",
   COMPARABLE: "Períodos comparáveis",
@@ -245,7 +246,7 @@ export function IntelligenceWorkspace({
     return (
       <label>
         {label}
-        <select
+        <Select
           aria-label={label}
           value={selected?.id ?? ""}
           onChange={(e) => setChosen(e.target.value)}
@@ -256,7 +257,7 @@ export function IntelligenceWorkspace({
               {p.archived ? " · Arquivado" : ""}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
     );
   }
@@ -269,8 +270,7 @@ export function IntelligenceWorkspace({
           </span>
           <h1>Inteligência do estoque</h1>
           <p>
-            Entenda o consumo, confira o valor armazenado e explore o próximo
-            passo.
+            Veja quanto você usa, quanto tem parado e o que comprar.
           </p>
         </div>
         <div className="stock-actions">
@@ -336,7 +336,40 @@ export function IntelligenceWorkspace({
             }}
           >
             <label>
-              Período: de
+              Produto
+              <Select
+                aria-label="Produto"
+                value={draft.productId}
+                onChange={(e) =>
+                  setDraft({ ...draft, productId: e.target.value })
+                }
+              >
+                <option value="">Todos</option>
+                {view.options.products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.archived ? " · Arquivado" : ""}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label>
+              Categoria
+              <Select
+                aria-label="Categoria"
+                value={draft.category}
+                onChange={(e) =>
+                  setDraft({ ...draft, category: e.target.value })
+                }
+              >
+                <option value="">Todas</option>
+                {view.options.categories.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            </label>
+            <label>
+              De
               <input
                 type="date"
                 required
@@ -355,42 +388,12 @@ export function IntelligenceWorkspace({
                 onChange={(e) => setDraft({ ...draft, to: e.target.value })}
               />
             </label>
-            <label>
-              Produto
-              <select
-                aria-label="Produto"
-                value={draft.productId}
-                onChange={(e) =>
-                  setDraft({ ...draft, productId: e.target.value })
-                }
-              >
-                <option value="">Todos</option>
-                {view.options.products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.archived ? " · Arquivado" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Categoria
-              <select
-                aria-label="Categoria"
-                value={draft.category}
-                onChange={(e) =>
-                  setDraft({ ...draft, category: e.target.value })
-                }
-              >
-                <option value="">Todas</option>
-                {view.options.categories.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
+            <details className="intel-advanced">
+              <summary>Mais opções</summary>
+              <div>
             <label>
               Agrupar
-              <select
+              <Select
                 aria-label="Agrupar"
                 value={draft.grouping}
                 onChange={(e) =>
@@ -403,10 +406,10 @@ export function IntelligenceWorkspace({
                 <option value="DAY">Dia</option>
                 <option value="WEEK">Blocos de 7 dias</option>
                 <option value="MONTH">Mês</option>
-              </select>
+              </Select>
             </label>
             <label>
-              Horizonte de compra (dias)
+              Planejar compras para quantos dias?
               <input
                 type="number"
                 min={1}
@@ -418,15 +421,16 @@ export function IntelligenceWorkspace({
                 }
               />
             </label>
+              </div>
+            </details>
             <button className="button button-green" disabled={loading}>
-              Aplicar filtros
+              Atualizar
             </button>
           </form>
           <p className="analysis-footnote">
-            Histórico: {date(r.period.from)} a {date(r.period.to)} (
-            {r.period.days} dias). Comparação: {date(r.period.previousFrom)} a{" "}
-            {date(r.period.previousTo)}. Saldo, planejamento e sinais vigentes
-            mantêm a referência atual.
+            Mostrando {date(r.period.from)} a {date(r.period.to)} ({r.period.days}{" "}
+            dias), comparado a {date(r.period.previousFrom)} a{" "}
+            {date(r.period.previousTo)}.
           </p>
           <div
             className="intel-tabs"
@@ -477,11 +481,9 @@ export function IntelligenceWorkspace({
             {!view.total ? (
               <div className="analysis-empty">
                 <BarChart3 size={27} />
-                <h2>Nenhum produto neste recorte.</h2>
+                <h2>Nenhum produto com esses filtros.</h2>
                 <p>
-                  Revise os filtros ou traga os primeiros registros para
-                  começar. As análises não presumem um histórico que ainda não
-                  foi conferido.
+                  Mude os filtros ou importe seus registros para começar.
                 </p>
                 <Link className="stock-secondary" href="/app/importar">
                   Trazer uma planilha <ArrowRight size={15} />
@@ -494,10 +496,7 @@ export function IntelligenceWorkspace({
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <span className="eyebrow section-label">
-                            RITMO OBSERVADO
-                          </span>
-                          <h2>Consumo ao longo do tempo</h2>
+                          <h2>Quanto você usou</h2>
                         </div>
                       </div>
                       <div className="intel-card-body">
@@ -507,7 +506,7 @@ export function IntelligenceWorkspace({
                             <div className="intel-number">
                               <strong>{n(selected.currentConsumption)}</strong>
                               <span>
-                                {selected.unit} registrados no período
+                                {selected.unit} usados no período
                               </span>
                             </div>
                             <p className="analysis-footnote">
@@ -515,12 +514,11 @@ export function IntelligenceWorkspace({
                               {selected.changePercent !== null
                                 ? ` · ${n(selected.changePercent)}% frente ao intervalo anterior`
                                 : ""}
-                              . As barras somam somente consumo confirmado,
-                              descontados os estornos.
+                              .
                             </p>
                             <ConsumptionChart product={selected} />
                             <details className="analysis-table-details">
-                              <summary>Ver série em tabela</summary>
+                              <summary>Ver em tabela</summary>
                               <Table title="Série de consumo">
                                 <table>
                                   <thead>
@@ -565,10 +563,9 @@ export function IntelligenceWorkspace({
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <h2>Comparação entre períodos equivalentes</h2>
+                          <h2>Comparado ao período anterior</h2>
                           <p>
-                            Sem cobertura integral, as quantidades são apenas os
-                            registros conhecidos.
+                            Considera só os registros que você já lançou.
                           </p>
                         </div>
                       </div>
@@ -577,10 +574,9 @@ export function IntelligenceWorkspace({
                           <thead>
                             <tr>
                               <th>Produto</th>
-                              <th>Atual registrado</th>
-                              <th>Anterior registrado</th>
-                              <th>Variação</th>
-                              <th>Base</th>
+                              <th>Agora</th>
+                              <th>Antes</th>
+                              <th>Variação</th><th>Observação</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -611,10 +607,9 @@ export function IntelligenceWorkspace({
                       <section className="stock-card">
                         <div className="stock-card-heading">
                           <div>
-                            <h2>Tendência recente · {selected.name}</h2>
+                            <h2>Últimas 3 semanas · {selected.name}</h2>
                             <p>
-                              Três blocos completos de 7 dias encerrados ontem;
-                              independentes do filtro histórico.
+                              Semanas completas até ontem, sem depender do período escolhido.
                             </p>
                           </div>
                         </div>
@@ -623,12 +618,7 @@ export function IntelligenceWorkspace({
                             {selected.trend.blocks.map((b, i) => (
                               <div key={i}>
                                 <small>
-                                  Bloco {i + 1} ·{" "}
-                                  {i === 0
-                                    ? "mais antigo"
-                                    : i === 2
-                                      ? "mais recente"
-                                      : "intermediário"}
+                                  {i === 0 ? "Há 3 semanas" : i === 2 ? "Última semana" : "Há 2 semanas"}
                                 </small>
                                 <strong>
                                   {n(b)} {selected.unit}
@@ -638,10 +628,10 @@ export function IntelligenceWorkspace({
                           </div>
                           <p className="analysis-footnote">
                             {!selected.trend.covered
-                              ? "Cobertura insuficiente para classificar a tendência."
+                              ? "Ainda faltam registros para dizer se o uso está subindo."
                               : selected.trend.detected
-                                ? `Crescimento em dois passos de pelo menos ${r.policy.trendPercent}%: conferir aumento progressivo e contexto sazonal.`
-                                : "Sem aumento progressivo pelos critérios atuais. Isso não comprova ausência de variação ou sazonalidade."}
+                                ? `O uso subiu semana após semana (mais de ${r.policy.trendPercent}% a cada passo). Vale conferir o motivo.`
+                                : "Sem alta contínua nas últimas semanas."}
                           </p>
                         </div>
                       </section>
@@ -649,15 +639,13 @@ export function IntelligenceWorkspace({
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <h2>Retiradas para conferir</h2>
+                          <h2>Retiradas fora do padrão</h2>
                           <p>
-                            Janela vigente dos detectores:{" "}
-                            {r.policy.comparisonDays} dias e registros de hoje,
-                            sem incluir o evento na própria referência.
+                            Saídas bem acima do que é normal para o produto.
                           </p>
                         </div>
                         <span className="stock-badge">
-                          {view.anomalies.total} sinais
+                          {view.anomalies.total} {view.anomalies.total === 1 ? "aviso" : "avisos"}
                         </span>
                       </div>
                       {view.anomalies.total ? (
@@ -668,8 +656,8 @@ export function IntelligenceWorkspace({
                                 <tr>
                                   <th>Produto / data</th>
                                   <th>Retirada</th>
-                                  <th>Referência anterior</th>
-                                  <th>Evidência</th>
+                                  <th>Normal até então</th>
+                                  <th>Detalhes</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -691,15 +679,15 @@ export function IntelligenceWorkspace({
                                       {n(a.quantity)} {a.unit}
                                     </td>
                                     <td>
-                                      Mediana {n(a.median)} · limite{" "}
-                                      {n(a.threshold)} {a.unit}
+                                      Em geral {n(a.median)} · acima de{" "}
+                                      {n(a.threshold)} {a.unit} chama atenção
                                       <small>
-                                        {a.samples} amostras anteriores
+                                        Baseado em {a.samples} retiradas anteriores
                                       </small>
                                     </td>
                                     <td>
                                       <details>
-                                        <summary>Como foi identificado</summary>
+                                        <summary>Por que apareceu</summary>
                                         <p className="analysis-footnote">
                                           {a.explanation}
                                         </p>
@@ -725,9 +713,7 @@ export function IntelligenceWorkspace({
                         </>
                       ) : (
                         <div className="stock-empty-small">
-                          Nenhum sinal identificado com amostra e cobertura
-                          suficientes. Uma ausência de sinal não substitui a
-                          conferência dos registros.
+                          Nenhuma retirada fora do padrão encontrada.
                         </div>
                       )}
                     </section>
@@ -737,28 +723,27 @@ export function IntelligenceWorkspace({
                   <>
                     <div className="intel-metrics">
                       <Metric
-                        title="Valor físico atual conhecido"
+                        title="Valor em estoque hoje"
                         value={money(r.summary.currentValue)}
                         note={`${r.summary.unpricedLots} lotes atuais sem custo`}
                       />
                       <Metric
-                        title="Aquisições conhecidas no período"
+                        title="Compras no período"
                         value={money(r.summary.purchaseValue)}
-                        note={`${r.summary.purchaseUnpriced} entradas sem custo · não comprova pagamento`}
+                        note={`${r.summary.purchaseUnpriced} entradas sem custo informado`}
                       />
                       <Metric
-                        title="Consumo valorizado no período"
+                        title="Valor do que foi usado"
                         value={money(r.summary.consumptionValue)}
-                        note={`${r.summary.consumptionUnpriced} retiradas sem custo · ao custo registrado`}
+                        note={`${r.summary.consumptionUnpriced} retiradas sem custo informado`}
                       />
                     </div>
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <h2>Onde está o valor armazenado?</h2>
+                          <h2>Quanto vale cada categoria</h2>
                           <p>
-                            Valor atual por categoria, somando saldos ao custo
-                            de cada lote.
+                            Valor do estoque atual, usando o custo de cada lote.
                           </p>
                         </div>
                       </div>
@@ -771,7 +756,7 @@ export function IntelligenceWorkspace({
                             <tr>
                               <th>Categoria</th>
                               <th>Estoque atual</th>
-                              <th>Aquisições no período</th>
+                              <th>Compras no período</th>
                               <th>Consumo no período</th>
                             </tr>
                           </thead>
@@ -791,10 +776,9 @@ export function IntelligenceWorkspace({
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <h2>Aquisições e variação de preços</h2>
+                          <h2>Compras e preços pagos</h2>
                           <p>
-                            Mesma unidade e produto; abertura e ajustes não são
-                            compras.
+                            Só entradas de compra; saldo inicial e ajustes não contam.
                           </p>
                         </div>
                       </div>
@@ -803,18 +787,15 @@ export function IntelligenceWorkspace({
                         {selected && (
                           <>
                             <p className="analysis-footnote">
-                              Média ponderada dos saldos com custo conhecido:{" "}
+                              Preço médio do estoque atual:{" "}
                               {selected.weightedCost === null
                                 ? "indisponível"
                                 : `${unitMoney(selected.weightedCost)}/${selected.unit}`}
-                              . Indicador separado; não reprecifica os lotes.
+                              .
                             </p>
                             <PriceComparison product={selected} />
                             <p className="analysis-footnote">
-                              Histórico abaixo: até 20 das {selected.priceTotal}{" "}
-                              aquisições no período. Consulte todos os registros
-                              pelo link; entradas estornadas ficam fora destes
-                              totais.
+                              Mostrando até 20 das {selected.priceTotal} compras do período.
                             </p>
                             <Table title="Aquisições do produto">
                               <table>
@@ -849,7 +830,7 @@ export function IntelligenceWorkspace({
                             </Table>
                             {!selected.prices.length && (
                               <p className="stock-empty-small">
-                                Nenhuma aquisição registrada nesse período.
+                                Nenhuma compra registrada nesse período.
                               </p>
                             )}
                             <MovementLink
@@ -868,34 +849,30 @@ export function IntelligenceWorkspace({
                   <>
                     <div className="intel-metrics">
                       <Metric
-                        title="Valor conhecido sem consumo"
+                        title="Parado, sem uso"
                         value={money(r.summary.idleKnownValue)}
-                        note={`Exige ${r.policy ? "o período de inatividade configurado" : "histórico coberto"}; saldo físico`}
+                        note={"Estoque sem nenhuma retirada no período"}
                       />
                       <Metric
-                        title="Valor do excedente estimado"
+                        title="Acima do necessário"
                         value={money(r.summary.excessKnownValue)}
-                        note={`Horizonte desejado: ${r.policy.excessDays} dias`}
+                        note={`Mais do que o uso de ${r.policy.excessDays} dias`}
                       />
                       <Metric
-                        title="União das exposições"
+                        title="Total para rever"
                         value={money(r.summary.exposureKnownValue)}
-                        note="Parado e excesso sem contar o mesmo lote duas vezes"
+                        note="Parado + excesso, sem contar o mesmo lote duas vezes"
                       />
                     </div>
                     <p className="intel-callout">
-                      Esses valores não são perdas confirmadas. Não some esta
-                      exposição à de validade: um lote pode aparecer nos dois
-                      contextos.
+                      São valores para rever, não perdas confirmadas. Um lote pode aparecer aqui e nos alertas de validade.
                     </p>
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <h2>Excesso e capital parado por produto</h2>
+                          <h2>O que está sobrando ou parado</h2>
                           <p>
-                            Saldo elegível para excesso; saldo físico para
-                            capital sem consumo. Custos ausentes continuam
-                            explícitos.
+                            Por produto, do maior valor para o menor.
                           </p>
                         </div>
                       </div>
@@ -904,9 +881,9 @@ export function IntelligenceWorkspace({
                           <thead>
                             <tr>
                               <th>Produto</th>
-                              <th>Excedente estimado</th>
-                              <th>Valor sem consumo</th>
-                              <th>Participação no valor atual</th>
+                              <th>Sobra estimada</th>
+                              <th>Parado</th>
+                              <th>Peso no estoque</th>
                               <th>Base</th>
                             </tr>
                           </thead>
@@ -926,19 +903,19 @@ export function IntelligenceWorkspace({
                                   </td>
                                   <td>
                                     {p.excessQuantity === null
-                                      ? "Sem base para estimar"
+                                      ? "Sem dados para estimar"
                                       : `${n(p.excessQuantity)} ${p.unit}`}
                                     <small>
-                                      {money(p.excessKnownValue)} conhecidos
+                                      {money(p.excessKnownValue)}
                                     </small>
                                   </td>
                                   <td>
                                     {money(p.idleKnownValue)}
                                     <small>
                                       {p.idle
-                                        ? "Sem consumo confirmado no intervalo coberto"
+                                        ? "Sem uso no período"
                                         : p.idleCovered
-                                          ? "Não classificado como parado"
+                                          ? "Em uso"
                                           : "Cobertura insuficiente"}
                                     </small>
                                   </td>
@@ -947,12 +924,12 @@ export function IntelligenceWorkspace({
                                       ? "—"
                                       : `${n(p.knownValueShare)}%`}
                                     <small>
-                                      Do valor conhecido da propriedade
+                                      Do valor total do estoque
                                     </small>
                                   </td>
                                   <td>
                                     <details>
-                                      <summary>Conferir limitações</summary>
+                                      <summary>Ver ressalvas</summary>
                                       <ul className="intel-limitations">
                                         {p.limitations.map((l) => (
                                           <li key={l}>{l}</li>
@@ -979,33 +956,26 @@ export function IntelligenceWorkspace({
                     <section className="stock-card">
                       <div className="stock-card-heading">
                         <div>
-                          <span className="eyebrow section-label">
-                            PLANEJAR ANTES DE COMPRAR
-                          </span>
-                          <h2>Reposição sugerida</h2>
+                          <h2>O que comprar</h2>
                           <p>
-                            Alvo = maior entre mínimo e demanda no horizonte.
-                            Desconta saldo elegível aproveitável, considerando
-                            vencimentos.
+                            Calculado pelo maior entre o estoque mínimo e o uso previsto, descontando o que você já tem e não vence antes.
                           </p>
                         </div>
                       </div>
                       <div className="intel-card-body">
                         <p className="intel-callout">
-                          Nenhuma chegada agendada foi considerada. Ainda não há
-                          pedidos confirmados no aplicativo. Uma simulação não
-                          cria uma compra.
+                          Pedidos já feitos não são considerados. Isto é só uma sugestão, não cria compra.
                         </p>
                         <div className="intel-metrics">
                           <Metric
-                            title="Orçamento conhecido estimado"
+                            title="Orçamento estimado"
                             value={money(r.summary.estimatedBudget)}
-                            note="Referências históricas; não é cotação garantida"
+                            note="Com base nos preços já pagos"
                           />
                           <Metric
-                            title="Sugestões sem preço de referência"
+                            title="Sem preço de referência"
                             value={String(r.summary.budgetMissingProducts)}
-                            note="Não entram no orçamento conhecido"
+                            note="Não entram no orçamento"
                           />
                         </div>
                       </div>
@@ -1014,9 +984,9 @@ export function IntelligenceWorkspace({
                           <thead>
                             <tr>
                               <th>Produto</th>
-                              <th>Horizonte / alvo</th>
-                              <th>Compra sugerida</th>
-                              <th>Orçamento estimado</th>
+                              <th>Meta de estoque</th>
+                              <th>Comprar</th>
+                              <th>Custo estimado</th>
                               <th>Base</th>
                             </tr>
                           </thead>
@@ -1032,7 +1002,7 @@ export function IntelligenceWorkspace({
                                     {p.planning.horizonDays} dias
                                     <small>
                                       {p.planning.targetQuantity === null
-                                        ? "Alvo indisponível"
+                                        ? "Sem meta"
                                         : `${n(p.planning.targetQuantity)} ${p.unit}`}
                                     </small>
                                   </td>
@@ -1043,15 +1013,15 @@ export function IntelligenceWorkspace({
                                   </td>
                                   <td>
                                     {p.planning.estimatedBudget === null
-                                      ? "Preço não informado"
+                                      ? "Sem preço"
                                       : money(p.planning.estimatedBudget)}
                                   </td>
                                   <td>
                                     {p.planning.basis === "MINIMUM_ONLY"
-                                      ? "Somente mínimo; sem projeção de consumo"
+                                      ? "Só o estoque mínimo"
                                       : p.planning.basis === "INSUFFICIENT"
-                                        ? "Sem mínimo e média válidos"
-                                        : "Demanda e mínimo, sem duplicar necessidade"}
+                                        ? "Faltam mínimo e histórico"
+                                        : "Uso previsto e estoque mínimo"}
                                     <small>{p.planning.priceReference}</small>
                                   </td>
                                 </tr>
@@ -1073,16 +1043,14 @@ export function IntelligenceWorkspace({
             )}
           </section>
           <details className="intel-assumptions">
-            <summary>Premissas e limites desta leitura</summary>
+            <summary>Como esses números são calculados</summary>
             <ul>
               {r.assumptions.map((a) => (
                 <li key={a}>{a}</li>
               ))}
             </ul>
             <p>
-              Gráficos e linhas exibem os produtos da página atual; indicadores
-              e categorias consolidam todos os produtos que atendem aos filtros.
-              Análises de sinais não são diagnóstico agronômico.
+              Os totais somam todos os produtos filtrados; gráficos e tabelas mostram a página atual.
             </p>
           </details>
         </>
@@ -1231,8 +1199,7 @@ function Simulator({
     <section className="stock-card intel-simulator">
       <div className="stock-card-heading">
         <div>
-          <span className="eyebrow section-label">EXPLORE UM CENÁRIO</span>
-          <h2>E se o consumo ou a reposição mudar?</h2>
+          <h2>E se o consumo mudar?</h2>
           <p>Uma comparação hipotética, sem alterar seu estoque.</p>
         </div>
         <FlaskConical size={25} />
@@ -1269,7 +1236,7 @@ function Simulator({
         <div className="intel-simulation-fields">
           <label>
             Produto do cenário
-            <select
+            <Select
               aria-label="Produto do cenário"
               required
               value={form.productId}
@@ -1283,7 +1250,7 @@ function Simulator({
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Duração do cenário (dias)
@@ -1332,7 +1299,7 @@ function Simulator({
           </label>
           <label>
             Validade hipotética
-            <select
+            <Select
               aria-label="Validade hipotética"
               value={form.expiryStatus}
               onChange={(e) =>
@@ -1347,7 +1314,7 @@ function Simulator({
               <option value="UNKNOWN">
                 Desconhecida · fora do saldo elegível
               </option>
-            </select>
+            </Select>
           </label>
           {form.expiryStatus === "DATED" && (
             <label>

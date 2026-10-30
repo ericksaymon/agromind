@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import argon2 from "../../api/node_modules/argon2/argon2.cjs";
 import { db } from "../../api/src/db";
 import { dateKey, shiftDay } from "../../api/src/analysis-engine";
+import { pick } from "./select";
 const email = `analysis-e2e-${randomUUID()}@example.test`, password = "Teste123";
 let userId: string, propertyId: string, productId: string;
 const today = dateKey(new Date(), "America/Cuiaba");
@@ -47,7 +48,7 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await page.getByRole("link", { name: "Alertas e decisões", exact: true }).click();
   await page.getByRole("button", { name: /Planeje a reposição/ }).click();
   dialog = page.getByRole("dialog"); await expect(dialog).toContainText("420 L / 60 L/dia = 7 dias");
-  await dialog.getByLabel("Estado da ação").selectOption("RESOLVED"); await dialog.getByLabel("Responsável pela ação").selectOption(userId);
+  await pick(dialog.getByLabel("Estado da ação"), "RESOLVED"); await pick(dialog.getByLabel("Responsável pela ação"), userId);
   await dialog.getByLabel("Observação da ação").fill("Reposição em planejamento, ainda sem entrada física");
   await audit(page, "justificativa e acompanhamento"); await page.screenshot({ path: "../../tmp/phase4-alert-detail.png", fullPage: true });
   await dialog.getByRole("button", { name: "Salvar acompanhamento" }).click();
@@ -57,7 +58,7 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await dialog.getByRole("button", { name: "Salvar nova versão" }).click(); await expect(dialog).not.toBeVisible();
   await expect(page.locator(".analysis-reference")).toContainText("política 2");
   await page.goto(`/app/estoque/${productId}`); await page.getByRole("button", { name: "Movimentar", exact: true }).click();
-  dialog = page.getByRole("dialog"); await dialog.getByLabel("Tipo de operação").selectOption("CONSUMPTION"); await dialog.getByLabel("Quantidade (L)", { exact: true }).fill("150"); await dialog.getByLabel("Destino", { exact: true }).fill("Trator 01"); await dialog.getByLabel("Data do fato").fill(today);
+  dialog = page.getByRole("dialog"); await pick(dialog.getByLabel("Tipo de operação"), "CONSUMPTION"); await dialog.getByLabel("Quantidade (L)", { exact: true }).fill("150"); await dialog.getByLabel("Destino", { exact: true }).fill("Trator 01"); await dialog.getByLabel("Data do fato").fill(today);
   await dialog.getByRole("button", { name: "Conferir movimentação" }).click(); await dialog.getByRole("button", { name: "Confirmar movimentação" }).click();
   await expect(page.getByText("Autonomia nominal: 4,5 dias", { exact: true })).toBeVisible(); await expect(page.locator(".stock-summary")).toContainText("270 L");
   await page.getByText("Análises e revisões anteriores", { exact: true }).click(); await expect(page.getByRole("region", { name: "Análises anteriores" })).toContainText("7 dias");
@@ -65,7 +66,7 @@ test("painel e alertas reais: cobertura, ação, retirada, autonomia e acessibil
   await page.getByRole("button", { name: /Planeje a reposição/ }).click(); dialog = page.getByRole("dialog"); await expect(dialog).toContainText("270 L / 60 L/dia = 4.5 dias"); await expect(dialog).toContainText("Acompanhamento atualizado");
   await dialog.getByRole("link", { name: "Planejar reposição", exact: false }).click();
   await expect(page).toHaveURL(new RegExp(`productId=${productId}&tab=planning`));
-  await expect(page.getByRole("tab", { name: "Planejamento e simulação", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Planejar compras", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Produto", { exact: true })).toHaveValue(productId);
   for (const route of ["/app", "/app/alertas", `/app/estoque/${productId}`]) {
     await page.setViewportSize({ width: 390, height: 844 }); await page.goto(route); await expect(page.locator(".analysis-reference").first()).toContainText("Atualizado");

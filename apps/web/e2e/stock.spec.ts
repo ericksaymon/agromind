@@ -15,6 +15,7 @@ async function audit(page: Page, label: string) {
 import { randomUUID } from "node:crypto";
 import argon2 from "../../api/node_modules/argon2/argon2.cjs";
 import { db } from "../../api/src/db";
+import { pick } from "./select";
 const email = `stock-e2e-${randomUUID()}@example.test`,
   password = "Teste123";
 let propertyId: string, userId: string;
@@ -77,10 +78,10 @@ test("estoque real: cadastro, lote, consumo, estorno e importação conferida", 
   ).toBeVisible();
   await page.getByRole("button", { name: "Movimentar", exact: true }).click();
   dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Tipo de operação").selectOption("OPENING");
+  await pick(dialog.getByLabel("Tipo de operação"), "OPENING");
   await dialog.getByLabel("Quantidade (L)", { exact: true }).fill("100");
   await dialog.getByLabel("Código do lote").fill("DIESEL-01");
-  await dialog.getByRole("combobox", { name: /^Validade/ }).selectOption("NA");
+  await pick(dialog.getByLabel(/^Validade/), "NA");
   await dialog.getByLabel("Custo unitário (R$)", { exact: false }).fill("6,10");
   await dialog
     .getByLabel("Fornecedor", { exact: false })
@@ -92,7 +93,7 @@ test("estoque real: cadastro, lote, consumo, estorno e importação conferida", 
   await expect(page.locator(".stock-summary")).toContainText("100 L");
   await page.getByRole("button", { name: "Movimentar", exact: true }).click();
   dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Tipo de operação").selectOption("CONSUMPTION");
+  await pick(dialog.getByLabel("Tipo de operação"), "CONSUMPTION");
   await dialog.getByLabel("Quantidade (L)", { exact: true }).fill("25");
   await dialog.getByLabel("Destino", { exact: true }).fill("Trator 01");
   await dialog.getByLabel("Data do fato").fill("2026-10-02");

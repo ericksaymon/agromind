@@ -200,14 +200,16 @@
   font-weight: 550;
 }
 .intel-callout {
-  padding: 17px 20px;
-  border: 1px solid #d2dfc5;
-  background: #edf3e4;
-  color: #3f6035;
-  font-size: 12px;
-  line-height: 1.95;
-  border-radius: 8px;
-  margin-bottom: 22px;
+  padding: 2px 0 2px 14px;
+  border: 0;
+  border-left: 2px solid #b9c4b2;
+  background: transparent;
+  color: #5c6d64;
+  font-size: 13px;
+  line-height: 1.6;
+  border-radius: 0;
+  margin: 4px 0 22px;
+  max-width: 78ch;
 }
 .intel-category-chart {
   display: flex;
@@ -454,3 +456,10 @@
   align-items: center;
   gap: 7px;
 }
+.intel-filters{padding:20px 22px;gap:16px}
+.intel-advanced{grid-column:1 / -1;order:1;font-size:12px;color:#476340}
+.intel-advanced summary{cursor:pointer;width:max-content;min-height:32px;display:flex;align-items:center;font-weight:600;color:#315b37}
+.intel-advanced>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:10px;max-width:640px}
+.intel-filters>.button{grid-column:1 / -1;order:2;justify-self:start;min-width:160px}
+.intel-tabs{margin-top:8px}
+@media(max-width:700px){.intel-advanced>div{grid-template-columns:1fr}.intel-filters>.button{justify-self:stretch}}

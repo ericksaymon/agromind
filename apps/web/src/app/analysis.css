@@ -9,3 +9,9 @@
 @media(max-width:600px){.analysis-stats{gap:10px}.analysis-stat{padding:16px;gap:10px}.analysis-stat strong{font-size:24px}.analysis-alert-row{padding:17px 14px;gap:9px;flex-wrap:wrap}.analysis-alert-copy{min-width:130px}.analysis-alert-icon{width:30px;height:30px}.analysis-alert-row>svg{display:none}.analysis-priority{padding:4px 7px}.analysis-context{grid-template-columns:1fr;padding:23px}.analysis-context>section+section{padding:22px 0 0;border-left:0;border-top:1px solid #cbd8bc}.analysis-filters{grid-template-columns:1fr 1fr;padding:15px}.analysis-filters label:first-child{grid-column:1/-1}.analysis-product-stats{grid-template-columns:1fr}.analysis-detail{padding:20px}.analysis-reference small{overflow-wrap:anywhere}.analysis-facts>div{flex-direction:column;gap:4px}.analysis-facts dd{text-align:left}.analysis-product-body{padding:0 16px 20px}.analysis-grid .stock-card-heading{align-items:flex-start}.analysis-grid .stock-badge{white-space:normal}.analysis-workspace .stock-page-heading{flex-direction:column;gap:8px}}
 
 .analysis-detail-limitations{font-size:11px;line-height:1.9;color:#52694d;padding-left:18px;margin-top:15px}
+.analysis-consumption{padding:24px 28px 28px;display:flex;flex-direction:column;gap:4px}
+.analysis-consumption>label{gap:9px;font-size:12px;font-weight:600}
+.analysis-consumption-value{margin-top:26px}
+.analysis-consumption>p{margin:6px 0 0}
+.analysis-bars{margin:26px 0 12px}
+.analysis-filters .ui-select-trigger{min-height:42px}

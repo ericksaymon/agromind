@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PhoneInput } from "./phone-input";
@@ -470,10 +471,10 @@ export function SettingsWorkspace({
                     </label>
                     <label>
                       Situação
-                      <select name="archived" defaultValue={String(c.archived)}>
+                      <Select name="archived" defaultValue={String(c.archived)}>
                         <option value="false">Ativa</option>
                         <option value="true">Arquivada</option>
-                      </select>
+                      </Select>
                     </label>
                     <label>
                       Motivo
@@ -570,7 +571,7 @@ export function SettingsWorkspace({
               </label>
               <label>
                 Papel
-                <select name="role" defaultValue="OPERATOR">
+                <Select name="role" defaultValue="OPERATOR">
                   <option value="OPERATOR">
                     Operador — estoque e importação
                   </option>
@@ -578,7 +579,7 @@ export function SettingsWorkspace({
                   <option value="ADMIN">
                     Administrador — controle da equipe e propriedade
                   </option>
-                </select>
+                </Select>
               </label>
               <IntentReason />
               <button disabled={busy} className="button button-green">
@@ -633,12 +634,12 @@ export function SettingsWorkspace({
                   >
                     <label>
                       Papel
-                      <select name="role" defaultValue={m.role}>
+                      <Select name="role" defaultValue={m.role}>
                         <option value="ADMIN">Administrador</option>
                         <option value="OPERATOR">Operador</option>
                         <option value="VIEWER">Consulta</option>
                         <option value="REMOVE">Remover da propriedade</option>
-                      </select>
+                      </Select>
                     </label>
                     <label>
                       Motivo
@@ -683,10 +684,10 @@ export function SettingsWorkspace({
                     >
                       <label>
                         Ação
-                        <select name="action">
+                        <Select name="action">
                           <option value="REVOKE">Revogar</option>
                           <option value="RESEND">Reenviar</option>
-                        </select>
+                        </Select>
                       </label>
                       <label>
                         Motivo

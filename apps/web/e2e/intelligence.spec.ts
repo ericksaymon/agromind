@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import argon2 from "../../api/node_modules/argon2/argon2.cjs";
 import { db } from "../../api/src/db";
 import { dateKey, shiftDay } from "../../api/src/analysis-common";
+import { pick } from "./select";
 const today = dateKey(new Date(), "America/Cuiaba"),
   email = `intelligence-e2e-${randomUUID()}@example.test`,
   password = "Teste123";
@@ -223,9 +224,7 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
   await expect(page.locator(".analysis-reference").first()).toContainText(
     "Dados atualizados",
   );
-  await page
-    .getByLabel("Produto no gráfico", { exact: true })
-    .selectOption(dieselId);
+  await pick(page.getByLabel("Produto no gráfico", { exact: true }), dieselId);
   await expect(
     page.getByRole("region", { name: "Comparação de consumo", exact: true }),
   ).toContainText("100%");
@@ -235,7 +234,7 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
       exact: true,
     }),
   ).toContainText("100 L");
-  await page.getByText("Ver série em tabela", { exact: true }).click();
+  await page.getByText("Ver em tabela", { exact: true }).click();
   await expect(
     page.getByRole("region", { name: "Série de consumo", exact: true }),
   ).toContainText("20");
@@ -255,11 +254,11 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     fullPage: true,
   });
   await page
-    .getByLabel("Período: de", { exact: true })
+    .getByLabel("De", { exact: true })
     .fill(shiftDay(today, -60));
   await page.getByLabel("Até", { exact: true }).fill(shiftDay(today, -31));
   await page
-    .getByRole("button", { name: "Aplicar filtros", exact: true })
+    .getByRole("button", { name: "Atualizar", exact: true })
     .click();
   await expect(page.locator(".intel-price-comparison")).toContainText(
     "São necessárias duas aquisições",
@@ -268,16 +267,17 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     "9.800,00",
   );
   await page
-    .getByLabel("Período: de", { exact: true })
+    .getByLabel("De", { exact: true })
     .fill(shiftDay(today, -30));
   await page.getByLabel("Até", { exact: true }).fill(shiftDay(today, -1));
-  await page.getByLabel("Agrupar", { exact: true }).selectOption("WEEK");
+  await page.getByText("Mais opções", { exact: true }).click();
+  await pick(page.getByLabel("Agrupar", { exact: true }), "WEEK");
   await page
-    .getByRole("button", { name: "Aplicar filtros", exact: true })
+    .getByRole("button", { name: "Atualizar", exact: true })
     .click();
   await expect(page.locator(".intel-price-comparison")).toContainText("20%");
   await page
-    .getByRole("tab", { name: "Excesso e capital parado", exact: true })
+    .getByRole("tab", { name: "Parado e excesso", exact: true })
     .click();
   await expect(
     page.getByRole("region", { name: "Excesso e capital parado", exact: true }),
@@ -287,7 +287,7 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
   );
   await audit(page, "excesso e capital parado desktop");
   await page
-    .getByRole("tab", { name: "Planejamento e simulação", exact: true })
+    .getByRole("tab", { name: "Planejar compras", exact: true })
     .click();
   await expect(
     page.getByRole("region", { name: "Sugestão de reposição", exact: true }),
@@ -301,9 +301,7 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     ).inventoryRevision,
   });
   const before = await counts();
-  await page
-    .getByLabel("Produto do cenário", { exact: true })
-    .selectOption(dieselId);
+  await pick(page.getByLabel("Produto do cenário", { exact: true }), dieselId);
   await page
     .getByLabel("Duração do cenário (dias)", { exact: true })
     .fill("30");
@@ -358,8 +356,8 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     for (const title of [
       "Consumo",
       "Finanças",
-      "Excesso e capital parado",
-      "Planejamento e simulação",
+      "Parado e excesso",
+      "Planejar compras",
     ]) {
       await page.getByRole("tab", { name: title, exact: true }).click();
       expect(
@@ -403,13 +401,11 @@ test("inteligência: consumo, finanças, capital parado, cenário sem gravação
     "política 2",
   );
   await page.getByRole("link", { name: "Ver alertas", exact: true }).click();
-  await page
-    .getByLabel("Tipo", { exact: true })
-    .selectOption("CONSUMPTION_CHANGE");
+  await pick(page.getByLabel("Tipo", { exact: true }), "CONSUMPTION_CHANGE");
   await expect(
     page.getByRole("heading", { name: "0 ocorrências", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Risco", { exact: true }).selectOption("closed");
+  await pick(page.getByLabel("Risco", { exact: true }), "closed");
   await expect(
     page.getByRole("button", { name: /Consumo recente aumentou/ }),
   ).toBeVisible();
