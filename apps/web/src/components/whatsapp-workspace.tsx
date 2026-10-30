@@ -1,7 +1,8 @@
 "use client";
 import { Select } from "./select";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, ExternalLink, MessageCircle, ShieldCheck, Unplug } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, ShieldCheck, Unplug } from "lucide-react";
+import { WhatsappIcon } from "./whatsapp-icon";
 import { apiRequest } from "@/lib/auth-client";
 type State = { connection: { propertyId: string; propertyName: string | null; lastDigits: string; connectedAt: string; lastMessageAt: string; access: boolean } | null; pairingAvailable: boolean; pairingUrl: string; transportReady: boolean; businessPhone: string; latestReply: { status: string; errorCode: string | null; updatedAt: string } | null };
 type Code = { shortCode: string; message: string; expiresAt: string; url: string };
@@ -30,7 +31,7 @@ export function WhatsappWorkspace({ properties, activeId }: { properties: { id: 
   }
   const statuses: Record<string, string> = { QUEUED: "Aguardando envio", SENDING: "Enviando", ACCEPTED: "Aceita pela Meta; entrega ainda não confirmada", SENT: "Enviada", DELIVERED: "Entregue", READ: "Lida", FAILED: "Falha no envio", UNKNOWN: "Envio sem confirmação. Faça uma nova pergunta.", CANCELED: "Envio cancelado" };
   return <div className="stock-workspace whatsapp-workspace">
-    <header className="stock-page-heading"><div><span className="eyebrow">SUA PROPRIEDADE NA CONVERSA</span><h1>Assistente no WhatsApp</h1><p>Consulte estoque, validade e autonomia pelo seu telefone, com os mesmos dados do painel.</p></div><MessageCircle size={36} aria-hidden="true" /></header>
+    <header className="stock-page-heading"><div><span className="eyebrow">SUA PROPRIEDADE NA CONVERSA</span><h1>Assistente no WhatsApp</h1><p>Consulte estoque, validade e autonomia pelo seu telefone, com os mesmos dados do painel.</p></div><WhatsappIcon size={36} /></header>
     {error && <p className="stock-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!state && !error && <p role="status">Carregando sua conexão…</p>}
     {state && <div className="whatsapp-grid"><section className="stock-card whatsapp-connection" aria-labelledby="connection-title">
