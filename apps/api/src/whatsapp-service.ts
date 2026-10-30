@@ -5,10 +5,11 @@ import { decryptWhatsapp, encryptWhatsapp, phoneHash } from "./whatsapp-crypto";
 import type { Tx } from "./stock-service";
 import { whatsappAnswer, whatsappHelp } from "./whatsapp-query";
 import { parseWhatsappPairCode } from "./whatsapp-pairing";
-import { routeWhatsappQuestion } from "./whatsapp-intent";
+import { extractWhatsappMovement, MOVEMENT_QUESTION, routeWhatsappQuestion, type Movement } from "./whatsapp-intent";
+import { cancelPending, confirmPending, isCancel, isConfirm, proposeDisconnect, proposeMovement, wantsDisconnect } from "./whatsapp-actions";
 import { AudioError, audioFailureMessage, transcribeWhatsappAudio } from "./whatsapp-audio";
 type Incoming = { id?: string; from?: string; timestamp?: string; type?: string; text?: { body?: string }; audio?: { id?: string }; status?: string };
-type Prepared = { eventKey: string; heard?: string; failure?: AudioError["code"]; routed?: string | null };
+type Prepared = { eventKey: string; heard?: string; failure?: AudioError["code"]; routed?: string | null; movement?: Movement | null };
 type Envelope = { to: string; text: string };
 
 async function liveConnection(tx: Tx, id: string, version?: number) {
@@ -25,7 +26,7 @@ async function liveConnection(tx: Tx, id: string, version?: number) {
 }
 
 // A IA é chamada antes da transação para não segurar travas durante a rede, e só para telefones já vinculados.
-async function prepareMessage(eventKey: string | undefined, transcribe: typeof transcribeWhatsappAudio, route: typeof routeWhatsappQuestion): Promise<Prepared | undefined> {
+async function prepareMessage(eventKey: string | undefined, transcribe: typeof transcribeWhatsappAudio, route: typeof routeWhatsappQuestion, extract: typeof extractWhatsappMovement): Promise<Prepared | undefined> {
   const rows = await db.$queryRaw<{ eventKey: string }[]>`SELECT "eventKey" FROM "WhatsappInboxEvent" WHERE kind='message' AND "processedAt" IS NULL AND attempts<5 AND (${eventKey ?? null}::text IS NULL OR "eventKey"=${eventKey ?? null}) ORDER BY "receivedAt","eventKey" LIMIT 1`;
   const event = rows.length ? await db.whatsappInboxEvent.findUnique({ where: { eventKey: rows[0].eventKey } }) : null;
   if (!event?.encrypted) return undefined;
@@ -41,15 +42,17 @@ async function prepareMessage(eventKey: string | undefined, transcribe: typeof t
     try { question = prepared.heard = await transcribe(item.audio?.id || ""); }
     catch (error) { return { ...prepared, failure: error instanceof AudioError ? error.code : "UNAVAILABLE" }; }
   } else if (parseWhatsappPairCode(question)) return undefined;
-  const products = await db.product.findMany({ where: { propertyId: linked.propertyId, archived: false }, select: { name: true }, orderBy: { name: "asc" }, take: 200 });
+  if (isConfirm(question) || isCancel(question)) return undefined;
+  const products = await db.product.findMany({ where: { propertyId: linked.propertyId, archived: false }, select: { name: true, unit: true }, orderBy: { name: "asc" }, take: 200 });
   prepared.routed = await route(question, products.map(p => p.name));
+  if (prepared.routed === MOVEMENT_QUESTION) prepared.movement = await extract(question, products);
   return prepared;
 }
 
-export async function processWhatsappEvent(eventKey?: string, transcribe = transcribeWhatsappAudio, route = routeWhatsappQuestion) {
+export async function processWhatsappEvent(eventKey?: string, transcribe = transcribeWhatsappAudio, route = routeWhatsappQuestion, extract = extractWhatsappMovement) {
   let selected: string | undefined;
   try {
-    const prepared = await prepareMessage(eventKey, transcribe, route);
+    const prepared = await prepareMessage(eventKey, transcribe, route, extract);
     return await db.$transaction(async tx => {
       const rows = await tx.$queryRaw<{ eventKey: string }[]>`SELECT "eventKey" FROM "WhatsappInboxEvent" WHERE "processedAt" IS NULL AND attempts<5 AND (${eventKey ?? null}::text IS NULL OR "eventKey"=${eventKey ?? null}) ORDER BY "receivedAt","eventKey" LIMIT 1 FOR UPDATE SKIP LOCKED`;
       if (!rows.length) return false;
@@ -108,7 +111,14 @@ export async function processWhatsappEvent(eventKey?: string, transcribe = trans
         else {
           await tx.whatsappConnection.update({ where: { id: connection.id }, data: { lastMessageAt: new Date(Math.max(connection.lastMessageAt.getTime(), sentAt)) } });
           const ready = prepared?.eventKey === event.eventKey ? prepared : undefined;
-          if (item.type === "text") response = await whatsappAnswer(tx, connection.property, ready?.routed ?? text);
+          const spoken = item.type === "text" ? text : ready?.heard ?? "";
+          if (item.type === "text" && isConfirm(text)) { const done = await confirmPending(tx, connection, event.eventKey); response = done.response; if (done.unlinked) connection = null; }
+          else if (item.type === "text" && isCancel(text)) response = await cancelPending(tx, connection);
+          else if (spoken && (wantsDisconnect(spoken) || ready?.routed === MOVEMENT_QUESTION)) {
+            const prefix = item.type === "audio" ? `Entendi: “${spoken}”\n\n` : "";
+            response = prefix + (wantsDisconnect(spoken) ? await proposeDisconnect(tx, connection) : await proposeMovement(tx, connection, ready?.movement ?? null));
+          }
+          else if (item.type === "text") { await tx.whatsappPendingAction.deleteMany({ where: { connectionId: connection.id } }); response = await whatsappAnswer(tx, connection.property, ready?.routed ?? text); }
           else if (item.type === "audio") {
             response = ready?.heard ? `Entendi: “${ready.heard}”\n\n${await whatsappAnswer(tx, connection.property, ready.routed ?? ready.heard)}` : audioFailureMessage[ready?.failure ?? "UNAVAILABLE"];
           } else response = "Por enquanto, envie sua pergunta por texto ou por mensagem de voz. Outros anexos ainda não são interpretados.";

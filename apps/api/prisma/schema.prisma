@@ -33,6 +33,18 @@ model WhatsappConnection {
   version Int @default(1)
   createdAt DateTime @default(now())
   lastMessageAt DateTime
+  pending WhatsappPendingAction?
+}
+
+model WhatsappPendingAction {
+  id String @id @default(uuid()) @db.Uuid
+  connectionId String @unique @db.Uuid
+  connection WhatsappConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connectionVersion Int
+  kind String @db.VarChar(12)
+  encrypted String @db.Text
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model WhatsappPairCode {

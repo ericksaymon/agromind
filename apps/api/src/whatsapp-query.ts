@@ -4,7 +4,7 @@ import { Prisma } from "./generated/prisma/client";
 import { dateKey, RULE_VERSION } from "./analysis-common";
 import type { AnalysisResult } from "../../../packages/contracts/src/index";
 const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export const whatsappHelp = "Posso consultar seu estoque por texto ou mensagem de voz. Exemplos: Quanto diesel temos? O que está abaixo do mínimo? O que está perto de vencer? Qual a autonomia do diesel? Ainda não registro movimentações. Para desconectar, use Assistente no painel.";
+export const whatsappHelp = "Posso consultar seu estoque por texto ou mensagem de voz. Exemplos: Quanto diesel temos? O que está abaixo do mínimo? O que está perto de vencer? Qual a autonomia do diesel? Também registro saídas: Retirei 20 litros de diesel (peço confirmação). Para desvincular o número, envie: desvincular.";
 
 export async function whatsappAnswer(tx: Tx, property: Property, text: string) {
   const q = normal(text).slice(0, 1500);

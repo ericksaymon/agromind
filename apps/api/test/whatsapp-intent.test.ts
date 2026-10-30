@@ -1,6 +1,6 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { routeWhatsappQuestion } from "../src/whatsapp-intent";
+import { extractWhatsappMovement, routeWhatsappQuestion } from "../src/whatsapp-intent";
 
 const previous = process.env.OPENROUTER_API_KEY;
 afterEach(() => { if (previous === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = previous; });
@@ -29,4 +29,15 @@ test("intenção: resposta inválida, incompleta ou falha viram null", async () 
   for (const t of [answer({ intent: "DROP_TABLE", product: -1 }), answer({ intent: "BALANCE", product: 9 }), answer({ intent: "BALANCE", product: 0.5 }), answer({ intent: "BALANCE", product: 0 }, "length"), (async () => new Response("", { status: 500 })) as unknown as typeof fetch, (async () => { throw new Error("rede"); }) as unknown as typeof fetch])
     assert.equal(await routeWhatsappQuestion("x", names, t), null);
   assert.equal(await routeWhatsappQuestion("   ", names, answer({ intent: "HELP", product: -1 })), null);
+});
+test("movimentação: extrai campos validados e descarta quantidade inválida ou produto fora da lista", async () => {
+  process.env.OPENROUTER_API_KEY = "synthetic-key-not-a-real-credential";
+  const products = [{ name: "Adubo NPK", unit: "kg" }, { name: "Diesel S10", unit: "L" }];
+  assert.deepEqual(await extractWhatsappMovement("tirei 20,5 litros pro trator", products, answer({ kind: "OUT", product: 1, quantity: "20,5", destination: " trator " })), { kind: "OUT", product: "Diesel S10", quantity: "20.5", destination: "trator" });
+  assert.equal((await extractWhatsappMovement("x", products, answer({ kind: "OUT", product: 1, quantity: "vinte", destination: null })))?.quantity, null);
+  assert.equal((await extractWhatsappMovement("x", products, answer({ kind: "OUT", product: 1, quantity: "-5", destination: null })))?.quantity, null);
+  assert.equal((await extractWhatsappMovement("x", products, answer({ kind: "OUT", product: -1, quantity: "5", destination: null })))?.product, null);
+  assert.equal(await extractWhatsappMovement("x", products, answer({ kind: "OUT", product: 7, quantity: "5", destination: null })), null);
+  assert.equal(await extractWhatsappMovement("x", products, answer({ kind: "DROP", product: 0, quantity: "5", destination: null })), null);
+  assert.equal(await extractWhatsappMovement("x", products, (async () => new Response("", { status: 500 })) as unknown as typeof fetch), null);
 });
