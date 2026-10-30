@@ -46,7 +46,8 @@ test("WhatsApp: gerar código, confirmar vínculo, trocar propriedade e desconec
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "../../tmp/whatsapp-connected-mobile.png", fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole("button", { name: "Desconectar WhatsApp", exact: true }).click();
+  page.once("dialog", dialog => void dialog.accept());
+  await page.getByRole("button", { name: "Desvincular número", exact: true }).click();
   await expect(page.getByText("Conecte seu telefone", { exact: true })).toBeVisible();
   expect(await db.whatsappConnection.count({ where: { userId: user.id } })).toBe(0);
   await page.route("**/api/account/whatsapp", async route => {

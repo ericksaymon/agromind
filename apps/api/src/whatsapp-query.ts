@@ -4,12 +4,17 @@ import { Prisma } from "./generated/prisma/client";
 import { dateKey, RULE_VERSION } from "./analysis-common";
 import type { AnalysisResult } from "../../../packages/contracts/src/index";
 const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export const whatsappHelp = "Posso consultar seu estoque por texto. Exemplos: Quanto diesel temos? O que está abaixo do mínimo? O que está perto de vencer? Qual a autonomia do diesel? Ainda não registro movimentações nem interpreto áudios. Para desconectar, use Assistente no painel.";
+export const whatsappHelp = "Posso consultar seu estoque por texto ou mensagem de voz. Exemplos: Quanto diesel temos? O que está abaixo do mínimo? O que está perto de vencer? Qual a autonomia do diesel? Ainda não registro movimentações. Para desconectar, use Assistente no painel.";
 
 export async function whatsappAnswer(tx: Tx, property: Property, text: string) {
   const q = normal(text).slice(0, 1500);
   if (/\b(retir|retira|retire|saida|registre|registrar|adicione|entrada|descarte|estorne|baixe)\w*/.test(q)) return "Esta versão permite consultas. Para registrar uma movimentação, use o painel do AgroMind; nenhuma alteração foi feita.";
   if (/^(oi|ola|bom dia|boa tarde|boa noite|ajuda|menu)[!.? ]*$/.test(q)) return whatsappHelp;
+  if (/^quais produtos temos/.test(q)) {
+    const all = await tx.product.findMany({ where: { propertyId: property.id, archived: false }, orderBy: { name: "asc" }, take: 501 });
+    if (!all.length) return `A propriedade ${property.name} ainda não tem produtos cadastrados.`;
+    return `${property.name} — ${all.length > 500 ? "mais de 500" : all.length} produto(s) cadastrado(s):\n${all.slice(0, 15).map(p => `• ${p.name}`).join("\n")}${all.length > 15 ? "\nLista parcial; veja todos no painel." : ""}\nPergunte, por exemplo: Quanto ${all[0].name} temos?`;
+  }
   const summary = /minim|critico|acabando|comprar|repor/.test(q), expiry = /venc|validade/.test(q), autonomy = /autonomia|dura|tempo|consumo/.test(q);
   const products = await tx.product.findMany({ where: { propertyId: property.id, archived: false }, include: { lots: true }, orderBy: { name: "asc" }, take: 501 });
   if (!products.length) return `A propriedade ${property.name} ainda não tem produtos cadastrados.`;

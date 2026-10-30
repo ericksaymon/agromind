@@ -7,12 +7,14 @@ import { digest, sessionCookie } from "../src/security";
 import { settings } from "../src/config";
 import { encryptWhatsapp, decryptWhatsapp } from "../src/whatsapp-crypto";
 import { processWhatsappEvent, sendWhatsappReply, metaSend } from "../src/whatsapp-service";
+import { routeWhatsappQuestion } from "../src/whatsapp-intent";
+import { AudioError, transcribeWhatsappAudio } from "../src/whatsapp-audio";
 import { processAnalysis } from "../src/analysis-service";
 const prefix = `assistant-${Date.now()}`, users: string[] = [], properties: string[] = [], events: string[] = [];
-const envNames = ["WHATSAPP_INBOX_KEY", "WHATSAPP_PUBLIC_NUMBER", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_GRAPH_VERSION", "WHATSAPP_ALLOW_LOCAL_PAIRING"];
+const envNames = ["WHATSAPP_INBOX_KEY", "WHATSAPP_PUBLIC_NUMBER", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_GRAPH_VERSION", "WHATSAPP_ALLOW_LOCAL_PAIRING", "OPENROUTER_API_KEY"];
 const previous = envNames.map(k => process.env[k]);
 let app: Awaited<ReturnType<typeof buildApp>>;
-before(async () => { process.env.WHATSAPP_ALLOW_LOCAL_PAIRING = "true"; process.env.WHATSAPP_INBOX_KEY = randomBytes(32).toString("hex"); process.env.WHATSAPP_PUBLIC_NUMBER = "556900000000"; app = await buildApp({ test: true }); });
+before(async () => { delete process.env.OPENROUTER_API_KEY; process.env.WHATSAPP_ALLOW_LOCAL_PAIRING = "true"; process.env.WHATSAPP_INBOX_KEY = randomBytes(32).toString("hex"); process.env.WHATSAPP_PUBLIC_NUMBER = "556900000000"; app = await buildApp({ test: true }); });
 after(async () => {
   await app.close();
   await db.whatsappPairAttempt.deleteMany({ where: { eventKey: { in: events } } });
@@ -88,7 +90,7 @@ test("assistente: saldo real, isolamento, validade, ambiguidade e ausência de h
   assert.match(response(await receive(a.phone, "Quanto diesel temos?")), /mais de um/);
   assert.match(response(await receive(a.phone, "Retire 20 litros de diesel")), /nenhuma alteração/);
   assert.equal(await db.stockMovement.count({ where: { productId: p.id } }), 0);
-  assert.match(response(await receive(a.phone, "consulta", { type: "audio" })), /por texto/);
+  assert.match(response(await receive(a.phone, "consulta", { type: "image" })), /por texto ou por mensagem de voz/);
   const stranger = await receive("556900000099", "Quanto diesel temos?"); assert.ok(!response(stranger).includes("45.5"));
 });
 test("assistente: revogação cancela resposta já calculada antes de transmitir dados", async () => {
@@ -172,4 +174,49 @@ test("assistente: código curto aceita hífen e minúsculas; tentativas limitada
   const { phoneHash } = await import("../src/whatsapp-crypto");
   await db.whatsappPairAttempt.updateMany({ where: { phoneHash: phoneHash(b.phone) }, data: { createdAt: new Date(Date.now() - 660_000) } });
   assert.match(response(await receive(b.phone, valid)), /conectado/);
+});
+
+test("assistente: áudio vira a mesma resposta do texto e falhas têm mensagem própria", async () => {
+  const a = await fixture(); await receive(a.phone, await a.code());
+  const category = await db.category.findFirstOrThrow({ where: { propertyId: a.p.id, nameKey: "combustiveis" } });
+  await db.product.create({ data: { propertyId: a.p.id, name: "Diesel S10", nameKey: "diesel s10", category: category.name, categoryId: category.id, unit: "L", lots: { create: [{ code: "A", balance: "12", expiryStatus: "NA" }] } } });
+  const voice = async (transcribe: typeof transcribeWhatsappAudio, phone = a.phone) => {
+    const key = await message(phone, "", { type: "audio", audio: { id: "123456" } });
+    assert.equal(await processWhatsappEvent(key, transcribe), true);
+    return response(await db.whatsappReply.findUnique({ where: { eventKey: key } }));
+  };
+  const asked: string[] = [];
+  const ok = await voice(async id => { asked.push(id); return "quanto diesel temos"; });
+  assert.deepEqual(asked, ["123456"]);
+  assert.match(ok, /Entendi: “quanto diesel temos”/); assert.match(ok, /Saldo físico: 12 L/);
+  assert.match(await voice(async () => "Retire 20 litros de diesel"), /nenhuma alteração/);
+  assert.equal(await db.stockMovement.count({ where: { product: { propertyId: a.p.id } } }), 0);
+  for (const [code, pattern] of [["TOO_LARGE", /longo demais/], ["UNSUPPORTED", /formato/], ["EMPTY", /nenhuma fala/], ["NOT_CONFIGURED", /por texto/], ["UNAVAILABLE", /agora/]] as const)
+    assert.match(await voice(async () => { throw new AudioError(code); }), pattern);
+  assert.match(await voice(async () => { throw new Error("boom"); }), /agora/);
+  let calls = 0;
+  assert.match(await voice(async () => { calls++; return "quanto diesel temos"; }, "556900000055"), /Conectar WhatsApp/);
+  assert.equal(calls, 0);
+});
+
+test("assistente: IA direciona perguntas livres, texto e áudio, e cai no texto original sem IA", async () => {
+  const a = await fixture(); await receive(a.phone, await a.code());
+  const category = await db.category.findFirstOrThrow({ where: { propertyId: a.p.id, nameKey: "combustiveis" } });
+  await db.product.create({ data: { propertyId: a.p.id, name: "Diesel S10", nameKey: "diesel s10", category: category.name, categoryId: category.id, unit: "L", lots: { create: [{ code: "A", balance: "12", expiryStatus: "NA" }] } } });
+  const ask = async (text: string, route: typeof routeWhatsappQuestion, extra: object = {}) => {
+    const key = await message(a.phone, text, extra);
+    assert.equal(await processWhatsappEvent(key, async () => "tem óleo no tanque?", route), true);
+    return response(await db.whatsappReply.findUnique({ where: { eventKey: key } }));
+  };
+  const seen: { text: string; products: string[] }[] = [];
+  const routed = async (text: string, products: string[]) => { seen.push({ text, products }); return "Quanto Diesel S10 temos?"; };
+  assert.match(await ask("tenho combustível sobrando no tanque grande?", routed), /Saldo físico: 12 L/);
+  assert.deepEqual(seen[0], { text: "tenho combustível sobrando no tanque grande?", products: ["Diesel S10"] });
+  const voiced = await ask("", routed, { type: "audio", audio: { id: "99" } });
+  assert.match(voiced, /Entendi: “tem óleo no tanque\?”/); assert.match(voiced, /Saldo físico/); assert.equal(seen[1].text, "tem óleo no tanque?");
+  assert.match(await ask("quais produtos eu tenho?", async () => "Quais produtos temos?"), /1 produto\(s\).*Diesel S10/s);
+  assert.match(await ask("Quanto diesel temos?", async () => null), /Saldo físico: 12 L/);
+  assert.match(await ask("blablabla", async () => "ajuda"), /Posso consultar/);
+  const code = await a.code(); let calls = 0;
+  await ask(code, async () => { calls++; return null; }); assert.equal(calls, 0);
 });
