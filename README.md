@@ -35,15 +35,15 @@ O projeto atende produtores, administradores e pessoas responsáveis pelo estoqu
 | Dashboard e alertas | Estoque baixo, risco de falta, vencimentos, prioridades, justificativas e acompanhamento. |
 | Inteligência | Histórico e comparação de consumo, retiradas incomuns, tendências, preços, excesso e capital parado. |
 | Planejamento | Reposição sugerida e simulação de consumo/chegada hipotética, somente leitura. |
-| Acesso | Contas verificadas, propriedades, convites e papéis de administrador, operador e consulta. |
-| WhatsApp | Vínculo do telefone e consultas por texto de saldo, mínimo, validade e autonomia. |
+| Acesso | Contas com e-mail e senha (sem etapa de verificação no cadastro), propriedades, convites e papéis de administrador, operador e consulta. |
+| WhatsApp | Vínculo do telefone, consultas por texto ou voz (saldo, mínimo, validade e autonomia), registro de saída de estoque e desvinculação, ambos após o usuário digitar SIM. |
 
 As alterações feitas na conta são persistidas no PostgreSQL. A demonstração pública `/demo` usa dados fictícios e interações temporárias, separados das contas operacionais.
 
 ## Como avaliar
 
 1. Abra a [demonstração pública](https://agromind.ericksaymon.dev/demo) para conhecer a interface sem criar conta.
-2. Para testar persistência, [crie uma conta](https://agromind.ericksaymon.dev/criar-conta), confirme o e-mail e configure uma propriedade.
+2. Para testar persistência, [crie uma conta](https://agromind.ericksaymon.dev/criar-conta) e configure uma propriedade.
 3. Cadastre um produto ou importe um dos modelos CSV abaixo. Revise a prévia antes de confirmar.
 4. Confira estoque, alertas e o detalhe do produto. Custos, mínimos e validade ausentes são identificados.
 5. Registre uma movimentação pelo painel e confira o saldo e o histórico atualizados. A rotina de análise reavalia os dados a cada dez segundos.
@@ -169,4 +169,4 @@ Credenciais, bancos, dados pessoais reais, planejamento e builds ficam fora do G
 
 **[Assistir ao vídeo](documentation/video/agromind-final.mp4)** — 40 segundos, 1920 × 1080, horizontal, legendas em português, sem narração. Os 30 segundos centrais mostram a demonstração pública `/demo` com dados simulados: consulta a um Diesel S10, simulação de retirada de 150 litros, saldo atualizado para 270 litros e autonomia de 4,5 dias. Detalhes de gravação, trilha e limitações da captura em [documentation/video/production/REVIEW.md](documentation/video/production/REVIEW.md).
 
-A apresentação ao vivo segue preparada pela equipe. A base funcional verificada corresponde ao commit [`1d487b0`](https://github.com/ericksaymon/agromind/commit/1d487b0), com a correção do código curto. A documentação foi atualizada posteriormente. **A versão avaliada está na tag [`entrega-agrohack-2026-2`](https://github.com/ericksaymon/agromind/tree/entrega-agrohack-2026-2)**, com o vídeo da entrega [anexado na release](https://github.com/ericksaymon/agromind/releases/tag/entrega-agrohack-2026-2).
+A apresentação ao vivo segue preparada pela equipe. **A versão avaliada está na tag [`entrega-agrohack-2026-2`](https://github.com/ericksaymon/agromind/tree/entrega-agrohack-2026-2)**, que corresponde ao código publicado em produção (release `20261030-final`), com o vídeo da entrega [anexado na release](https://github.com/ericksaymon/agromind/releases/tag/entrega-agrohack-2026-2).

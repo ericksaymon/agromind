@@ -1,6 +1,6 @@
 # Operação do piloto AgroMind
 
-Estado revisado em 27/10/2026. Evidências históricas estão identificadas por data. Segredos permanecem fora do repositório.
+Estado revisado em 30/10/2026. Evidências históricas estão identificadas por data. Segredos permanecem fora do repositório.
 
 ## Produção — piloto público
 
@@ -10,7 +10,7 @@ Contatos públicos: `suporte@ericksaymon.dev` e `privacidade@ericksaymon.dev`, e
 
 Arquivos de operação: `deploy/Dockerfile`, `deploy/compose.production.yml`, `deploy/agromind.nginx.conf`, `deploy/backup.sh` e unidades `agromind-backup.service`/`.timer`. A API confia somente no endereço definido em `API_TRUST_PROXY`; atualizar esse endereço se o container do proxy mudar de IP. O proxy elimina cabeçalhos de IP fornecidos pelo visitante e usa as faixas oficiais da Cloudflare. API, banco e worker não possuem portas públicas próprias.
 
-Release ativa verificada: `20261027-whatsapp-short-code`, imagem `agromind:20261027-whatsapp-short-code`, digest `sha256:1de62488e6e038c500cc51a36af17ed0cd08993be8f7ce6ebedd9fd82642b72d`. Onze migrations aplicadas; backup prévio `agromind-20261027T162512Z.dump`. Releases anteriores preservadas. Não sobrescrever tags publicadas.
+Release ativa verificada: `20261030-final`, imagem `agromind:20261030-final`. Migration `20261030000000_whatsapp_pending_actions` aplicada; backup prévio feito pelo script de deploy. Smoke público aprovado. Releases anteriores preservadas. Não sobrescrever tags publicadas.
 
 O backup roda diariamente às 03:17 UTC, com atraso aleatório de até cinco minutos. A restauração inicial foi validada em banco separado, preservando as sete migrations, e uma cópia inicial foi trazida ao workspace privado. A cópia automática para fora da VM ainda não está configurada; manter um destino externo protegido e uma política de retenção é uma pendência operacional. O script não apaga backups automaticamente. O certificado de origem expira em 23/10/2027 e requer renovação antes dessa data.
 
